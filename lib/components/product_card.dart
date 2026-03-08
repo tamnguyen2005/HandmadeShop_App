@@ -1,0 +1,211 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../models/product.dart';
+import '../configurations/colors.dart';
+
+class ProductCard extends StatefulWidget {
+  final Product product;
+  final VoidCallback? onTap;
+  final VoidCallback? onFavoritePressed;
+  final VoidCallback? onAddToCart;
+  final bool isFavorite;
+
+  const ProductCard({
+    super.key,
+    required this.product,
+    this.onTap,
+    this.onFavoritePressed,
+    this.onAddToCart,
+    this.isFavorite = false,
+  });
+
+  @override
+  State<ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<ProductCard> {
+  final NumberFormat _currencyFormatter = NumberFormat('#,###', 'vi_VN');
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image Section with Favorite Button and Badge
+            Stack(
+              children: [
+                // Product Image
+                AspectRatio(
+                  aspectRatio: 1.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.3),
+                    ),
+                    child: widget.product.imageUrl.startsWith('http')
+                        ? Image.network(
+                            widget.product.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Icon(
+                                  Icons.shopping_bag_outlined,
+                                  size: 48,
+                                  color: AppColors.textLight,
+                                ),
+                              );
+                            },
+                          )
+                        : const Center(
+                            child: Icon(
+                              Icons.shopping_bag_outlined,
+                              size: 48,
+                              color: AppColors.textLight,
+                            ),
+                          ),
+                  ),
+                ),
+                
+                // Unique Badge
+                if (widget.product.isUnique)
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.uniqueBadge,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Độc bản',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                
+                // Favorite Button
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: widget.onFavoritePressed,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: widget.isFavorite ? AppColors.favorite : AppColors.textSecondary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            // Product Info Section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Product Name
+                    Text(
+                      widget.product.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    
+                    // Material/Description
+                    Text(
+                      widget.product.material,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    
+                    // Price
+                    Text(
+                      '${_currencyFormatter.format(widget.product.price)}đ',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    
+                    // Add to Cart Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: GestureDetector(
+                        onTap: widget.onAddToCart,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.shopping_bag_outlined,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Thêm',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
