@@ -7,6 +7,10 @@ import '../configurations/colors.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 import 'favorites_screen.dart';
+import 'collection_screen.dart';
+import 'store_screen.dart';
+import 'profile_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -139,76 +143,84 @@ class _HomeScreenState extends State<HomeScreen> {
         SliverAppBar(
           floating: true,
           pinned: true,
-          expandedHeight: 120,
           backgroundColor: Colors.white,
           elevation: 0,
-          flexibleSpace: FlexibleSpaceBar(
-            centerTitle: true,
-            title: Image.asset(
-              'assets/images/logo.png',
-              height: 40,
-              errorBuilder: (context, error, stackTrace) {
-                return const Text(
-                  'ATELIER',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                    fontFamily: 'Playfair Display',
+          automaticallyImplyLeading: false,
+          titleSpacing: 16,
+          centerTitle: false,
+          title: Image.asset(
+            'assets/images/logo.png',
+            height: 36,
+            alignment: Alignment.centerLeft,
+            errorBuilder: (context, error, stackTrace) {
+              return const Text(
+                'ATELIER',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                  fontFamily: 'Playfair Display',
+                ),
+              );
+            },
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search, color: AppColors.primary),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SearchScreen(
+                      products: _products,
+                      favoriteProducts: _favoriteProducts,
+                      onToggleFavorite: _toggleFavorite,
+                      onAddToCart: _addToCart,
+                      onProductTap: _navigateToProductDetail,
+                    ),
                   ),
                 );
               },
             ),
-          ),
-          actions: [
             IconButton(
               icon: Badge(
                 isLabelVisible: _cartItems.isNotEmpty,
                 label: Text('${_cartItems.length}'),
-                child: const Icon(Icons.shopping_bag_outlined),
+                child: const Icon(Icons.shopping_bag_outlined, color: AppColors.primary),
               ),
               onPressed: () {
-                setState(() {
-                  _currentIndex = 2;
-                });
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CartScreen(
+                      cartItems: _cartItems,
+                      onUpdateCart: (updatedItems) {
+                        setState(() {
+                          _cartItems
+                            ..clear()
+                            ..addAll(updatedItems);
+                        });
+                      },
+                    ),
+                  ),
+                );
               },
             ),
           ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(height: 1, color: AppColors.border),
+          ),
         ),
 
         // Banner Section
         SliverToBoxAdapter(
           child: BannerSlider(
             onExplorePressed: () {
-              // Scroll to products section (already visible)
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Khám phá bộ sưu tập mùa xuân! 🌸'),
-                  duration: Duration(seconds: 2),
-                  backgroundColor: AppColors.primary,
-                ),
-              );
+              setState(() {
+                _currentIndex = 1;
+              });
             },
-          ),
-        ),
-
-        // Search Bar
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Tìm kiếm sản phẩm...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-              ),
-            ),
           ),
         ),
 
@@ -250,26 +262,21 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final product = _products[index];
-                return ProductCard(
-                  product: product,
-                  isFavorite: _favoriteProducts.contains(product),
-                  onTap: () => _navigateToProductDetail(product),
-                  onFavoritePressed: () => _toggleFavorite(product),
-                  onAddToCart: () => _addToCart(product),
-                );
-              },
-              childCount: _products.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final product = _products[index];
+              return ProductCard(
+                product: product,
+                isFavorite: _favoriteProducts.contains(product),
+                onTap: () => _navigateToProductDetail(product),
+                onFavoritePressed: () => _toggleFavorite(product),
+                onAddToCart: () => _addToCart(product),
+              );
+            }, childCount: _products.length),
           ),
         ),
 
         // Bottom Padding
-        const SliverToBoxAdapter(
-          child: SizedBox(height: 16),
-        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
     );
   }
@@ -281,23 +288,33 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _currentIndex,
         children: [
           _buildHomeContent(),
+          CollectionScreen(
+            products: _products,
+            favoriteProducts: _favoriteProducts,
+            onToggleFavorite: _toggleFavorite,
+            onAddToCart: _addToCart,
+            onProductTap: _navigateToProductDetail,
+          ),
+          StoreScreen(
+            products: _products,
+            favoriteProducts: _favoriteProducts,
+            onToggleFavorite: _toggleFavorite,
+            onAddToCart: _addToCart,
+            onProductTap: _navigateToProductDetail,
+          ),
           FavoritesScreen(
             favoriteProducts: _favoriteProducts,
             onToggleFavorite: _toggleFavorite,
             onAddToCart: _addToCart,
           ),
-          CartScreen(
-            cartItems: _cartItems,
-            onUpdateCart: (updatedItems) {
-              setState(() {
-                _cartItems.clear();
-                _cartItems.addAll(updatedItems);
-              });
-            },
+          ProfileScreen(
+            favoriteCount: _favoriteProducts.length,
+            cartCount: _cartItems.length,
           ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {
@@ -306,6 +323,8 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textLight,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -313,14 +332,24 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Trang chủ',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.auto_awesome_mosaic_outlined),
+            activeIcon: Icon(Icons.auto_awesome_mosaic),
+            label: 'Bộ sưu tập',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.storefront_outlined),
+            activeIcon: Icon(Icons.storefront),
+            label: 'Cửa hàng',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.favorite_border),
             activeIcon: Icon(Icons.favorite),
             label: 'Yêu thích',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag_outlined),
-            activeIcon: Icon(Icons.shopping_bag),
-            label: 'Giỏ hàng',
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Cá nhân',
           ),
         ],
       ),
