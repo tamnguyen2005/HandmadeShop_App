@@ -17,7 +17,7 @@ class APIClient {
           'Authorization': "Bearer $token",
         },
       );
-      if (response.statusCode >= 200 || response.statusCode <= 299) {
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
           data: jsonDecode(response.body),
@@ -47,7 +47,7 @@ class APIClient {
         },
         body: jsonEncode(body),
       );
-      if (response.statusCode >= 200 || response.statusCode <= 299) {
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
           data: response.body != "" ? jsonDecode(response.body) : null,
@@ -77,7 +77,7 @@ class APIClient {
         },
         body: jsonEncode(body),
       );
-      if (response.statusCode >= 200 || response.statusCode <= 299) {
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
           data: response.body != "" ? jsonDecode(response.body) : null,
@@ -110,7 +110,7 @@ class APIClient {
     var streamedResponse = await request.send();
     try {
       var response = await http.Response.fromStream(streamedResponse);
-      if (response.statusCode >= 200 || response.statusCode <= 299) {
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
           data: response.body != "" ? jsonDecode(response.body) : null,
@@ -134,7 +134,7 @@ class APIClient {
   ) async {
     var request = http.MultipartRequest('POST', Uri.parse("$baseUrl$endpoint"));
     request.fields.addAll(textFile);
-    if (file != null && fileKeyName!=null) {
+    if (file != null && fileKeyName != null) {
       var multipartFile = await http.MultipartFile.fromPath(
         fileKeyName,
         file.path,
@@ -143,7 +143,7 @@ class APIClient {
     var streamedResponse = await request.send();
     try {
       var response = await http.Response.fromStream(streamedResponse);
-      if (response.statusCode >= 200 || response.statusCode <= 299) {
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
           data: response.body != "" ? jsonDecode(response.body) : null,
