@@ -1,4 +1,4 @@
-import 'product.dart';
+import 'Product/Product.dart';
 
 class CartItem {
   final Product product;
@@ -9,5 +9,5 @@ class CartItem {
     this.quantity = 1,
   });
 
-  double get totalPrice => product.price * quantity;
+  double get totalPrice => product.BasePrice * quantity;
 }

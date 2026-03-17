@@ -3,5 +3,5 @@ class ApiResponse<T> {
   final T? data;
   final String? error;
   ApiResponse({required this.statusCode, this.data, this.error});
-  bool get isSuccess => statusCode >= 200 || statusCode <= 299;
+  bool get isSuccess => statusCode >= 200 && statusCode <= 299;
 }

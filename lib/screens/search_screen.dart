@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/product.dart';
+import '../models/Product/Product.dart';
 import '../components/product_card.dart';
 import '../configurations/colors.dart';
 
@@ -33,9 +33,9 @@ class _SearchScreenState extends State<SearchScreen> {
     return widget.products
         .where(
           (p) =>
-              p.name.toLowerCase().contains(q) ||
-              p.description.toLowerCase().contains(q) ||
-              p.category.toLowerCase().contains(q),
+              p.Name.toLowerCase().contains(q) ||
+              (p.Description ?? '').toLowerCase().contains(q) ||
+              (p.CategoryName ?? '').toLowerCase().contains(q),
         )
         .toList();
   }

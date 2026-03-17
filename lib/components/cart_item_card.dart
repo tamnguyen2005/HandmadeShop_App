@@ -33,13 +33,13 @@ class CartItemCard extends StatelessWidget {
               height: 80,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                color: AppColors.accent.withOpacity(0.3),
+                color: AppColors.accent.withValues(alpha: 0.3),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: cartItem.product.imageUrl.startsWith('http')
+                child: cartItem.product.ImageURL.startsWith('http')
                     ? Image.network(
-                        cartItem.product.imageUrl,
+                        cartItem.product.ImageURL,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Icon(
@@ -62,7 +62,7 @@ class CartItemCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    cartItem.product.name,
+                    cartItem.product.Name,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -73,7 +73,7 @@ class CartItemCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    cartItem.product.material,
+                    cartItem.product.CategoryName ?? 'San pham thu cong',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -83,7 +83,7 @@ class CartItemCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${currencyFormatter.format(cartItem.product.price)}đ',
+                        '${currencyFormatter.format(cartItem.product.BasePrice)}đ',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

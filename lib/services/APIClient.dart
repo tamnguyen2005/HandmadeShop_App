@@ -6,7 +6,7 @@ import 'package:handmadeshop_app/models/ApiReponse.dart';
 import 'package:http/http.dart' as http;
 
 class APIClient {
-  String baseUrl = "http://192.168.2.18:5000/api";
+  String baseUrl = "http://192.168.50.18:5000/api";
   Future<ApiResponse<dynamic>> get(String endpoint) async {
     final token = await SharedPreferencesService().getToken() ?? "";
     try {

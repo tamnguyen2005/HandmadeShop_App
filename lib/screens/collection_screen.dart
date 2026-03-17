@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../components/product_card.dart';
 import '../configurations/colors.dart';
-import '../models/product.dart';
+import '../models/Product/Product.dart';
 
 class CollectionScreen extends StatelessWidget {
   final List<Product> products;
@@ -22,7 +22,7 @@ class CollectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Product> uniqueProducts = products
-        .where((product) => product.isUnique)
+        .where((product) => (product.StockQuantity ?? 0) <= 1)
         .toList();
 
     return Scaffold(

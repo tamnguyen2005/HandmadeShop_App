@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/product.dart';
+import '../models/Product/Product.dart';
 import '../configurations/colors.dart';
 
 class ProductCard extends StatefulWidget {
@@ -43,11 +43,11 @@ class _ProductCardState extends State<ProductCard> {
                   aspectRatio: 1.0,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withOpacity(0.3),
+                      color: AppColors.accent.withValues(alpha: 0.3),
                     ),
-                    child: widget.product.imageUrl.startsWith('http')
+                    child: widget.product.ImageURL.startsWith('http')
                         ? Image.network(
-                            widget.product.imageUrl,
+                            widget.product.ImageURL,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return const Center(
@@ -70,7 +70,7 @@ class _ProductCardState extends State<ProductCard> {
                 ),
                 
                 // Unique Badge
-                if (widget.product.isUnique)
+                if ((widget.product.StockQuantity ?? 0) <= 1)
                   Positioned(
                     top: 12,
                     left: 12,
@@ -100,11 +100,11 @@ class _ProductCardState extends State<ProductCard> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -131,7 +131,7 @@ class _ProductCardState extends State<ProductCard> {
                   children: [
                     // Product Name
                     Text(
-                      widget.product.name,
+                      widget.product.Name,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -144,7 +144,9 @@ class _ProductCardState extends State<ProductCard> {
                     
                     // Material/Description
                     Text(
-                      widget.product.material,
+                      (widget.product.CategoryName?.isNotEmpty ?? false)
+                          ? widget.product.CategoryName!
+                          : 'San pham thu cong',
                       style: const TextStyle(
                         fontSize: 10,
                         color: AppColors.textSecondary,
@@ -162,7 +164,7 @@ class _ProductCardState extends State<ProductCard> {
                         // Price
                         Expanded(
                           child: Text(
-                            '${_currencyFormatter.format(widget.product.price)}đ',
+                            '${_currencyFormatter.format(widget.product.BasePrice)}đ',
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,

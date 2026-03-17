@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../components/product_card.dart';
 import '../configurations/colors.dart';
-import '../models/product.dart';
+import '../models/Product/Product.dart';
 
 class StoreScreen extends StatefulWidget {
   final List<Product> products;
@@ -29,7 +29,7 @@ class _StoreScreenState extends State<StoreScreen> {
 
   List<String> get _categories {
     final dynamicCategories = widget.products
-        .map((p) => p.category)
+        .map((p) => p.CategoryName ?? 'Khac')
         .toSet()
         .toList();
     return ['Tất cả', ...dynamicCategories];
@@ -39,8 +39,8 @@ class _StoreScreenState extends State<StoreScreen> {
     return widget.products.where((product) {
       final matchesCategory =
           _selectedCategory == 'Tất cả' ||
-          product.category == _selectedCategory;
-      final matchesQuery = product.name.toLowerCase().contains(
+          (product.CategoryName ?? 'Khac') == _selectedCategory;
+      final matchesQuery = product.Name.toLowerCase().contains(
         _query.toLowerCase(),
       );
       return matchesCategory && matchesQuery;

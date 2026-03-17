@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../models/product.dart';
 import '../models/cart_item.dart';
+import '../models/Product/Product.dart';
 import '../components/product_card.dart';
 import '../components/banner_slider.dart';
 import '../configurations/colors.dart';
+import '../services/APIClient.dart';
+import '../services/ProductService.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 import 'favorites_screen.dart';
@@ -21,77 +23,53 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  final ProductService _productService = ProductService(APIClient());
   final List<Product> _favoriteProducts = [];
   final List<CartItem> _cartItems = [];
+  List<Product> _products = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  // Mock data - sản phẩm mẫu
-  final List<Product> _products = [
-    Product(
-      id: '1',
-      name: 'Túi da xách tay',
-      description: 'Túi da thủ công cao cấp, thiết kế sang trọng',
-      price: 350000,
-      imageUrl: 'https://example.com/bag1.jpg',
-      category: 'Túi xách',
-      isUnique: true,
-      material: 'Da ý nguyên miếng',
-    ),
-    Product(
-      id: '2',
-      name: 'Túi đeo chéo hoa anh đào',
-      description: 'Túi đeo chéo với họa tiết hoa anh đào tinh tế',
-      price: 420000,
-      imageUrl: 'https://example.com/bag2.jpg',
-      category: 'Túi xách',
-      isUnique: true,
-      material: 'Da bò nguyên tấm',
-    ),
-    Product(
-      id: '3',
-      name: 'Ví da mini',
-      description: 'Ví nhỏ gọn, tiện lợi cho phái đẹp',
-      price: 180000,
-      imageUrl: 'https://example.com/wallet1.jpg',
-      category: 'Ví',
-      isUnique: false,
-      material: 'Da ý nguyên miếng',
-    ),
-    Product(
-      id: '4',
-      name: 'Túi tote da bò',
-      description: 'Túi tote size lớn, phù hợp đi làm, đi học',
-      price: 520000,
-      imageUrl: 'https://example.com/bag3.jpg',
-      category: 'Túi xách',
-      isUnique: true,
-      material: 'Da bò nguyên tấm',
-    ),
-    Product(
-      id: '5',
-      name: 'Ví dài nữ',
-      description: 'Ví dài nhiều ngăn, thiết kế thanh lịch',
-      price: 250000,
-      imageUrl: 'https://example.com/wallet2.jpg',
-      category: 'Ví',
-      isUnique: false,
-      material: 'Da ý nguyên miếng',
-    ),
-    Product(
-      id: '6',
-      name: 'Túi saddle bag',
-      description: 'Túi yên ngựa phong cách vintage',
-      price: 480000,
-      imageUrl: 'https://example.com/bag4.jpg',
-      category: 'Túi xách',
-      isUnique: true,
-      material: 'Da bò thuộc thủ công',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final products = await _productService.GetAllProduct();
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Khong the tai du lieu san pham. Vui long thu lai.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  bool _isFavorite(Product product) {
+    return _favoriteProducts.any((item) => item.Id == product.Id);
+  }
 
   void _toggleFavorite(Product product) {
     setState(() {
-      if (_favoriteProducts.contains(product)) {
-        _favoriteProducts.remove(product);
+      if (_isFavorite(product)) {
+        _favoriteProducts.removeWhere((item) => item.Id == product.Id);
       } else {
         _favoriteProducts.add(product);
       }
@@ -101,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _addToCart(Product product) {
     setState(() {
       final existingItem = _cartItems.firstWhere(
-        (item) => item.product.id == product.id,
+        (item) => item.product.Id == product.Id,
         orElse: () => CartItem(product: product, quantity: 0),
       );
 
@@ -114,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đã thêm "${product.name}" vào giỏ hàng'),
+        content: Text('Da them "${product.Name}" vao gio hang'),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.success,
@@ -128,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => ProductDetailScreen(
           product: product,
-          isFavorite: _favoriteProducts.contains(product),
+          isFavorite: _isFavorite(product),
           onFavoriteToggle: () => _toggleFavorite(product),
           onAddToCart: () => _addToCart(product),
         ),
@@ -136,7 +114,46 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildLoadingOrError() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off, size: 56, color: AppColors.textLight),
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: _loadProducts, child: const Text('Thu lai')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return const Center(
+      child: Text(
+        'Chua co san pham nao',
+        style: TextStyle(color: AppColors.textSecondary),
+      ),
+    );
+  }
+
   Widget _buildHomeContent() {
+    if (_isLoading || _errorMessage != null || _products.isEmpty) {
+      return _buildLoadingOrError();
+    }
+
     return CustomScrollView(
       slivers: [
         // App Bar
@@ -266,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
               final product = _products[index];
               return ProductCard(
                 product: product,
-                isFavorite: _favoriteProducts.contains(product),
+                isFavorite: _isFavorite(product),
                 onTap: () => _navigateToProductDetail(product),
                 onFavoritePressed: () => _toggleFavorite(product),
                 onAddToCart: () => _addToCart(product),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/product.dart';
+import '../models/Product/Product.dart';
 import '../configurations/colors.dart';
 import '../components/custom_button.dart';
 
@@ -39,7 +39,7 @@ class ProductDetailScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 8,
                     ),
                   ],
@@ -57,7 +57,7 @@ class ProductDetailScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 8,
                       ),
                     ],
@@ -75,10 +75,10 @@ class ProductDetailScreen extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   Container(
-                    color: AppColors.accent.withOpacity(0.3),
-                    child: product.imageUrl.startsWith('http')
+                    color: AppColors.accent.withValues(alpha: 0.3),
+                    child: product.ImageURL.startsWith('http')
                         ? Image.network(
-                            product.imageUrl,
+                            product.ImageURL,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return const Center(
@@ -98,7 +98,7 @@ class ProductDetailScreen extends StatelessWidget {
                             ),
                           ),
                   ),
-                  if (product.isUnique)
+                  if ((product.StockQuantity ?? 0) <= 1)
                     Positioned(
                       top: 60,
                       left: 16,
@@ -132,7 +132,7 @@ class ProductDetailScreen extends StatelessWidget {
                 children: [
                   // Product Name
                   Text(
-                    product.name,
+                    product.Name,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -145,11 +145,11 @@ class ProductDetailScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withOpacity(0.5),
+                      color: AppColors.accent.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      product.category,
+                      product.CategoryName ?? 'Khac',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.primary,
@@ -171,7 +171,7 @@ class ProductDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${currencyFormatter.format(product.price)}đ',
+                        '${currencyFormatter.format(product.BasePrice)}đ',
                         style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
@@ -193,7 +193,7 @@ class ProductDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    product.material,
+                    product.StoryBehind ?? 'San pham thu cong cao cap',
                     style: const TextStyle(
                       fontSize: 16,
                       color: AppColors.textSecondary,
@@ -213,7 +213,7 @@ class ProductDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    product.description,
+                    product.Description ?? 'Dang cap nhat mo ta san pham',
                     style: const TextStyle(
                       fontSize: 16,
                       color: AppColors.textSecondary,
@@ -241,7 +241,7 @@ class ProductDetailScreen extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
