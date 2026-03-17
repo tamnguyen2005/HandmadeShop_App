@@ -7,7 +7,7 @@ class ProductService {
   Future<List<Product>> GetAllProduct() async {
     var response = await apiClient.get("/Product");
     if (response.isSuccess) {
-      return response.data.map((p) => Product.fromJson(p)).toList();
+      return (response.data as List).map((p) => Product.fromJson(p)).toList();
     } else {
       return List.empty();
     }
@@ -19,6 +19,24 @@ class ProductService {
       return Product.fromJson(response.data);
     } else {
       return null;
+    }
+  }
+
+  Future<List<Product>> GetProductByCategoryId(String categoryId) async {
+    var response = await apiClient.get("/Product?CategoryId=$categoryId");
+    if (response.isSuccess) {
+      return (response.data as List).map((j) => Product.fromJson(j)).toList();
+    } else {
+      return [];
+    }
+  }
+
+  Future<List<Product>> GetProductByName(String name) async {
+    var response = await apiClient.get("/Product?Name=$name");
+    if (response.isSuccess) {
+      return (response.data as List).map((j) => Product.fromJson(j)).toList();
+    } else {
+      return [];
     }
   }
 }
