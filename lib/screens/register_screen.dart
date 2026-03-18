@@ -1,0 +1,303 @@
+import 'package:flutter/material.dart';
+
+import '../configurations/colors.dart';
+import '../models/Auth/RegisterRequest.dart';
+import '../services/APIClient.dart';
+import '../services/UserService.dart';
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
+
+  final UserService _userService = UserService(apiClient: APIClient());
+  bool _isAgree = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitRegister() async {
+    final fullName = _fullNameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+    final confirm = _confirmController.text;
+
+    if (fullName.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty || confirm.isEmpty) {
+      _showSnack('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    if (password != confirm) {
+      _showSnack('Mật khẩu xác nhận không khớp');
+      return;
+    }
+
+    if (!_isAgree) {
+      _showSnack('Vui lòng đồng ý với điều khoản và chính sách');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final ok = await _userService.Register(
+        RegisterRequest(
+          fullname: fullName,
+          email: email,
+          password: password,
+          phoneNumber: phone,
+          address: '',
+        ),
+      );
+      if (!mounted) return;
+      if (ok) {
+        _showSnack('Đăng ký thành công, vui lòng đăng nhập');
+        Navigator.of(context).pop();
+      } else {
+  		_showSnack(_userService.lastError ?? 'Đăng ký thất bại, vui lòng thử lại');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _showSnack('Không thể kết nối máy chủ, vui lòng thử lại');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F2EF),
+      body: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset('assets/images/backgroundregister.png', fit: BoxFit.cover),
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 24),
+              child: Column(
+                children: [
+                  // const SizedBox(height: 36),
+                  // Image.asset('assets/images/logo.png', width: 200),
+                  // const SizedBox(height: 34),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE9DEE0).withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
+                    child: Column(
+                      children: [
+                        _UnderlineInput(
+                          label: 'Họ và tên:',
+                          hintText: 'Họ tên',
+                          controller: _fullNameController,
+                        ),
+                        _UnderlineInput(
+                          label: 'Email :',
+                          hintText: 'Email',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        _UnderlineInput(
+                          label: 'Số điện thoại :',
+                          hintText: 'Số điện thoại',
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        _UnderlineInput(
+                          label: 'Mật khẩu :',
+                          hintText: 'Mật khẩu',
+                          controller: _passwordController,
+                          obscureText: true,
+                        ),
+                        _UnderlineInput(
+                          label: 'Nhập mật khẩu :',
+                          hintText: 'Nhập lại mật khẩu',
+                          controller: _confirmController,
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: Checkbox(
+                                value: _isAgree,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isAgree = value ?? false;
+                                  });
+                                },
+                                side: const BorderSide(color: AppColors.primaryLight),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+                                activeColor: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'Đồng ý với Điều Khoản và Chính Sách',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.primaryDark,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _submitRegister,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('ĐĂNG KÝ'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Bạn đã có tài khoản? ',
+                        style: TextStyle(color: AppColors.primaryDark, fontSize: 14),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: const Text(
+                          'Đăng Nhập Ngay',
+                          style: TextStyle(
+                            color: AppColors.primaryDark,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnderlineInput extends StatelessWidget {
+  const _UnderlineInput({
+    required this.label,
+    required this.hintText,
+    required this.controller,
+    this.keyboardType,
+    this.obscureText = false,
+  });
+
+  final String label;
+  final String hintText;
+  final TextEditingController controller;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primaryDark,
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: hintText,
+              hintStyle: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF9E8B86),
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+              border: const UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.primaryLight),
+              ),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.primaryLight),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.primary),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

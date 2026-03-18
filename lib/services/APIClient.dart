@@ -7,25 +7,78 @@ import 'package:http/http.dart' as http;
 
 class APIClient {
   String baseUrl = "http://192.168.50.18:5000/api";
-  Future<ApiResponse<dynamic>> get(String endpoint) async {
-    final token = await SharedPreferencesService().getToken() ?? "";
+  Future<Map<String, String>> _buildHeaders({
+    bool requiresAuth = true,
+    bool includeJsonContentType = true,
+  }) async {
+    final headers = <String, String>{};
+
+    if (includeJsonContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    if (requiresAuth) {
+      final token = await SharedPreferencesService().getToken();
+      if (token != null && token.trim().isNotEmpty) {
+        headers['Authorization'] = "Bearer $token";
+      }
+    }
+
+    return headers;
+  }
+
+  dynamic _decodeBody(String body) {
+    if (body.trim().isEmpty) return null;
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      return body;
+    }
+  }
+
+  String _extractErrorMessage(dynamic data) {
+    if (data is String && data.trim().isNotEmpty) {
+      return data.trim();
+    }
+
+    if (data is Map) {
+      final message = data['message'] ?? data['error'] ?? data['title'];
+      if (message is String && message.trim().isNotEmpty) {
+        return message;
+      }
+
+      final errors = data['errors'];
+      if (errors is Map) {
+        for (final value in errors.values) {
+          if (value is List && value.isNotEmpty) {
+            return value.first.toString();
+          }
+          if (value is String && value.isNotEmpty) {
+            return value;
+          }
+        }
+      }
+    }
+    return "Server returned an error";
+  }
+
+  Future<ApiResponse<dynamic>> get(String endpoint, {bool requiresAuth = true}) async {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl$endpoint"),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': "Bearer $token",
-        },
+        headers: await _buildHeaders(requiresAuth: requiresAuth),
       );
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
-          data: jsonDecode(response.body),
+          data: _decodeBody(response.body),
         );
       } else {
+        final data = _decodeBody(response.body);
         return ApiResponse(
           statusCode: response.statusCode,
-          error: "Server returned an error",
+          data: data,
+          error: _extractErrorMessage(data),
         );
       }
     } catch (e) {
@@ -36,26 +89,25 @@ class APIClient {
   Future<ApiResponse<dynamic>> post(
     String endpoint,
     Map<String, dynamic> body,
+    {bool requiresAuth = true}
   ) async {
-    final token = await SharedPreferencesService().getToken();
     try {
       final response = await http.post(
         Uri.parse("$baseUrl$endpoint"),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': "Bearer $token",
-        },
+        headers: await _buildHeaders(requiresAuth: requiresAuth),
         body: jsonEncode(body),
       );
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
-          data: response.body != "" ? jsonDecode(response.body) : null,
+          data: _decodeBody(response.body),
         );
       } else {
+        final data = _decodeBody(response.body);
         return ApiResponse(
           statusCode: response.statusCode,
-          error: "Server returned an error",
+          data: data,
+          error: _extractErrorMessage(data),
         );
       }
     } catch (e) {
@@ -66,26 +118,25 @@ class APIClient {
   Future<ApiResponse<dynamic>> put(
     String endpoint,
     Map<String, dynamic> body,
+    {bool requiresAuth = true}
   ) async {
-    final token = await SharedPreferencesService().getToken();
     try {
       final response = await http.put(
         Uri.parse("$baseUrl$endpoint"),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': "Bearer $token",
-        },
+        headers: await _buildHeaders(requiresAuth: requiresAuth),
         body: jsonEncode(body),
       );
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
-          data: response.body != "" ? jsonDecode(response.body) : null,
+          data: _decodeBody(response.body),
         );
       } else {
+        final data = _decodeBody(response.body);
         return ApiResponse(
           statusCode: response.statusCode,
-          error: "Server returned an error",
+          data: data,
+          error: _extractErrorMessage(data),
         );
       }
     } catch (e) {
@@ -98,14 +149,22 @@ class APIClient {
     Map<String, String> textFile,
     File? file,
     String fileKeyName,
+    {bool requiresAuth = true}
   ) async {
     var request = http.MultipartRequest('PUT', Uri.parse("$baseUrl$endpoint"));
+    request.headers.addAll(
+      await _buildHeaders(
+        requiresAuth: requiresAuth,
+        includeJsonContentType: false,
+      ),
+    );
     request.fields.addAll(textFile);
     if (file != null) {
       var multipartFile = await http.MultipartFile.fromPath(
         fileKeyName,
         file.path,
       );
+      request.files.add(multipartFile);
     }
     var streamedResponse = await request.send();
     try {
@@ -113,12 +172,14 @@ class APIClient {
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
-          data: response.body != "" ? jsonDecode(response.body) : null,
+          data: _decodeBody(response.body),
         );
       } else {
+        final data = _decodeBody(response.body);
         return ApiResponse(
           statusCode: response.statusCode,
-          error: "Server returned an error",
+          data: data,
+          error: _extractErrorMessage(data),
         );
       }
     } catch (e) {
@@ -131,14 +192,22 @@ class APIClient {
     Map<String, String> textFile,
     File? file,
     String? fileKeyName,
+    {bool requiresAuth = true}
   ) async {
     var request = http.MultipartRequest('POST', Uri.parse("$baseUrl$endpoint"));
+    request.headers.addAll(
+      await _buildHeaders(
+        requiresAuth: requiresAuth,
+        includeJsonContentType: false,
+      ),
+    );
     request.fields.addAll(textFile);
     if (file != null && fileKeyName != null) {
       var multipartFile = await http.MultipartFile.fromPath(
         fileKeyName,
         file.path,
       );
+      request.files.add(multipartFile);
     }
     var streamedResponse = await request.send();
     try {
@@ -146,12 +215,14 @@ class APIClient {
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,
-          data: response.body != "" ? jsonDecode(response.body) : null,
+          data: _decodeBody(response.body),
         );
       } else {
+        final data = _decodeBody(response.body);
         return ApiResponse(
           statusCode: response.statusCode,
-          error: "Server returned an error",
+          data: data,
+          error: _extractErrorMessage(data),
         );
       }
     } catch (e) {

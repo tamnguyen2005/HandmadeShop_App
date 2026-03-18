@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../components/product_card.dart';
+
 import '../configurations/colors.dart';
 import '../models/Product/Product.dart';
 
-class CollectionScreen extends StatelessWidget {
+class CollectionScreen extends StatefulWidget {
   final List<Product> products;
   final List<Product> favoriteProducts;
   final Function(Product) onToggleFavorite;
@@ -20,94 +22,492 @@ class CollectionScreen extends StatelessWidget {
   });
 
   @override
+  State<CollectionScreen> createState() => _CollectionScreenState();
+}
+
+class _CollectionScreenState extends State<CollectionScreen> {
+  late final DateTime _launchAt;
+  late Duration _remaining;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _launchAt = DateTime.now().add(
+      const Duration(days: 5, hours: 23, minutes: 35, seconds: 5),
+    );
+    _remaining = _launchAt.difference(DateTime.now());
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final duration = _launchAt.difference(DateTime.now());
+      if (!mounted) return;
+      setState(() {
+        _remaining = duration.isNegative ? Duration.zero : duration;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  List<Product> get _collectionProducts {
+    final filtered = widget.products.where((product) {
+      final category = (product.CategoryName ?? '').toLowerCase();
+      return category.contains('bo suu tap') ||
+          category.contains('bộ sưu tập') ||
+          category.contains('collection');
+    }).toList();
+
+    if (filtered.isNotEmpty) {
+      return filtered;
+    }
+    return widget.products.take(6).toList();
+  }
+
+  bool _isFavorite(Product product) {
+    return widget.favoriteProducts.any((item) => item.Id == product.Id);
+  }
+
+  String _twoDigits(int value) => value.toString().padLeft(2, '0');
+
+  @override
   Widget build(BuildContext context) {
-    final List<Product> uniqueProducts = products
-        .where((product) => (product.StockQuantity ?? 0) <= 1)
-        .toList();
+    final days = _twoDigits(_remaining.inDays);
+    final hours = _twoDigits(_remaining.inHours.remainder(24));
+    final minutes = _twoDigits(_remaining.inMinutes.remainder(60));
+    final seconds = _twoDigits(_remaining.inSeconds.remainder(60));
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F2EE),
       appBar: AppBar(
-        title: const Text('Bộ sưu tập'),
         automaticallyImplyLeading: false,
+        titleSpacing: 12,
+        title: const Text(
+          'ATELIER',
+          style: TextStyle(
+            color: AppColors.primary,
+            letterSpacing: 1.0,
+            fontWeight: FontWeight.w600,
+            fontSize: 28,
+          ),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.search, color: AppColors.primary),
+          ),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.shopping_bag_outlined, color: AppColors.primary),
+          ),
+        ],
       ),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFAEAD7), Color(0xFFF1D8B5)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Mùa Xuân Atelier',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: Color(0xFF8D8680))),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'BỘ SƯU TẬP',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: AppColors.primary,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Khám phá các thiết kế thủ công giới hạn, tập trung vào chất liệu da tự nhiên và chi tiết độc bản.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
+                      ),
+                      const Expanded(child: Divider(color: Color(0xFF8D8680))),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Phiên bản giới hạn',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  _buildLimitedSection(),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Thiết kế độc bản',
-                    style: TextStyle(
-                      fontSize: 18,
+                  Text(
+                    'Sắp ra mắt',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.primaryDark,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildComingSoonSection(days, hours, minutes, seconds),
+                  const SizedBox(height: 22),
+                  Text(
+                    'Bộ sưu tập hiện có',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.65,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+          if (_collectionProducts.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                  child: Text(
+                    'Chưa có bộ sưu tập hiện có',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
               ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final product = uniqueProducts[index];
-                return ProductCard(
-                  product: product,
-                  isFavorite: favoriteProducts.contains(product),
-                  onTap: () => onProductTap(product),
-                  onFavoritePressed: () => onToggleFavorite(product),
-                  onAddToCart: () => onAddToCart(product),
-                );
-              }, childCount: uniqueProducts.length),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.83,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final product = _collectionProducts[index];
+                    return _CollectionProductTile(
+                      product: product,
+                      isFavorite: _isFavorite(product),
+                      onTap: () => widget.onProductTap(product),
+                      onFavoriteTap: () => widget.onToggleFavorite(product),
+                      onAddToCart: () => widget.onAddToCart(product),
+                    );
+                  },
+                  childCount: _collectionProducts.length,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLimitedSection() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        height: 186,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset('assets/images/Phienbangioihan.png', fit: BoxFit.cover),
+            Positioned(
+              top: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Dang mo ban',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 10,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.93),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Chỉ còn 12 sản phẩm',
+                      style: TextStyle(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'Khám phá ngay >',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      shadows: [
+                        Shadow(color: Colors.black54, blurRadius: 3),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComingSoonSection(
+    String days,
+    String hours,
+    String minutes,
+    String seconds,
+  ) {
+    return Container(
+      height: 156,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.45)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/images/Sapramat.png', fit: BoxFit.cover),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.40),
+                  Colors.white.withValues(alpha: 0.00),
+                ],
+              ),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          Positioned(
+            left: 10,
+            right: 10,
+            bottom: 10,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _CountdownBox(label: 'Ngày', value: days),
+                    const SizedBox(width: 4),
+                    _CountdownBox(label: 'Giờ', value: hours),
+                    const SizedBox(width: 4),
+                    _CountdownBox(label: 'Phút', value: minutes),
+                    const SizedBox(width: 4),
+                    _CountdownBox(label: 'Giây', value: seconds),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Da bat nhac nho khi bo suu tap ra mat'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    minimumSize: const Size(0, 34),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                  icon: const Icon(Icons.notifications_active_outlined, size: 14),
+                  label: const Text('Nhắc tôi khi ra mắt'),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _CountdownBox extends StatelessWidget {
+  const _CountdownBox({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 29,
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E4D6),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primaryDark,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 8),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CollectionProductTile extends StatelessWidget {
+  const _CollectionProductTile({
+    required this.product,
+    required this.isFavorite,
+    required this.onTap,
+    required this.onFavoriteTap,
+    required this.onAddToCart,
+  });
+
+  final Product product;
+  final bool isFavorite;
+  final VoidCallback onTap;
+  final VoidCallback onFavoriteTap;
+  final VoidCallback onAddToCart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    product.ImageURL.startsWith('http')
+                        ? Image.network(
+                            product.ImageURL,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: AppColors.accent,
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.shopping_bag_outlined,
+                                color: AppColors.textLight,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: AppColors.accent,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.shopping_bag_outlined,
+                              color: AppColors.textLight,
+                            ),
+                          ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: InkWell(
+                        onTap: onFavoriteTap,
+                        child: CircleAvatar(
+                          radius: 14,
+                          backgroundColor: Colors.white.withValues(alpha: 0.92),
+                          child: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            size: 16,
+                            color: isFavorite ? AppColors.favorite : AppColors.primaryDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Bộ sưu tập',
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      product.Name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: onAddToCart,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

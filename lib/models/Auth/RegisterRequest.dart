@@ -11,10 +11,11 @@ class RegisterRequest {
     this.phoneNumber,
     this.address,
   });
-  Map<String, String> toJson() {
+
+  Map<String, String> toFormData() {
     return {
-      "FullName": fullname,
-      "Email": email,
+      "FullName": fullname.trim(),
+      "Email": email.trim().toLowerCase(),
       "Password": password,
       "PhoneNumber": phoneNumber ?? "",
       "Address": address ?? "",

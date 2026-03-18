@@ -29,6 +29,9 @@ class _ProductCardState extends State<ProductCard> {
   @override
   Widget build(BuildContext context) {
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: widget.onTap,
@@ -36,12 +39,12 @@ class _ProductCardState extends State<ProductCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image Section with Favorite Button and Badge
-            Stack(
-              children: [
-                // Product Image
-                AspectRatio(
-                  aspectRatio: 1.0,
-                  child: Container(
+            Expanded(
+              flex: 58,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
                     decoration: BoxDecoration(
                       color: AppColors.accent.withValues(alpha: 0.3),
                     ),
@@ -53,7 +56,7 @@ class _ProductCardState extends State<ProductCard> {
                               return const Center(
                                 child: Icon(
                                   Icons.shopping_bag_outlined,
-                                  size: 48,
+                                  size: 42,
                                   color: AppColors.textLight,
                                 ),
                               );
@@ -62,72 +65,71 @@ class _ProductCardState extends State<ProductCard> {
                         : const Center(
                             child: Icon(
                               Icons.shopping_bag_outlined,
-                              size: 48,
+                              size: 42,
                               color: AppColors.textLight,
                             ),
                           ),
                   ),
-                ),
-                
-                // Unique Badge
-                if ((widget.product.StockQuantity ?? 0) <= 1)
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.uniqueBadge,
-                        borderRadius: BorderRadius.circular(20),
+
+                  if ((widget.product.StockQuantity ?? 0) <= 1)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.uniqueBadge,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Text(
+                          'Độc bản',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      child: const Text(
-                        'Độc bản',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                    ),
+
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: GestureDetector(
+                      onTap: widget.onFavoritePressed,
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: widget.isFavorite ? AppColors.favorite : AppColors.textSecondary,
+                          size: 20,
                         ),
                       ),
                     ),
                   ),
-                
-                // Favorite Button
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: widget.onFavoritePressed,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        widget.isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: widget.isFavorite ? AppColors.favorite : AppColors.textSecondary,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
             
             // Product Info Section
             Expanded(
+              flex: 42,
               child: Padding(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Product Name
                     Text(
@@ -154,7 +156,7 @@ class _ProductCardState extends State<ProductCard> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 6),
                     
                     // Price and Add to Cart Button Row
                     Row(
@@ -170,14 +172,17 @@ class _ProductCardState extends State<ProductCard> {
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 6),
                         
                         // Add to Cart Button 
                         GestureDetector(
                           onTap: widget.onAddToCart,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
                               borderRadius: BorderRadius.circular(6),

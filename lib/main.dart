@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'configurations/theme.dart';
-import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'Atelier Handmade Shop',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const HomeScreen(),
+      home: const OnboardingScreen(),
     );
   }
 }

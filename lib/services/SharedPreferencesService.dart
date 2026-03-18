@@ -22,4 +22,12 @@ class SharedPreferencesService {
     var imageURL = sharedPreferences.getString("ImageURL") ?? "";
     return UserInfo(fullname: fullname, email: email, imageURL: imageURL);
   }
+
+  Future<void> clearUserInfo() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.remove("FullName");
+    await sharedPreferences.remove("Email");
+    await sharedPreferences.remove("ImageURL");
+    await sharedPreferences.remove("Token");
+  }
 }
