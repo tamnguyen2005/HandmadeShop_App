@@ -103,76 +103,32 @@ class _LoginScreenState extends State<LoginScreen> {
 									Container(
 										width: double.infinity,
 										decoration: BoxDecoration(
-											color: const Color(0xFFE9DEE0).withValues(alpha: 0.95),
+											color: Colors.transparent,
 											borderRadius: BorderRadius.circular(20),
 										),
 										padding: const EdgeInsets.fromLTRB(16, 24, 16, 18),
 										child: Column(
 											children: [
-												TextField(
+												_AuthInputField(
 													controller: _emailController,
 													keyboardType: TextInputType.emailAddress,
-													style: const TextStyle(fontSize: 14),
-													decoration: InputDecoration(
-														hintText: 'Email hoặc số điện thoại',
-														hintStyle: const TextStyle(fontSize: 13),
-														contentPadding: const EdgeInsets.symmetric(
-															horizontal: 14,
-															vertical: 14,
-														),
-														filled: true,
-														fillColor: Colors.white,
-														border: OutlineInputBorder(
-															borderRadius: BorderRadius.circular(13),
-															borderSide: const BorderSide(color: AppColors.primaryLight),
-														),
-														enabledBorder: OutlineInputBorder(
-															borderRadius: BorderRadius.circular(13),
-															borderSide: const BorderSide(color: AppColors.primaryLight),
-														),
-														focusedBorder: OutlineInputBorder(
-															borderRadius: BorderRadius.circular(13),
-															borderSide: const BorderSide(color: AppColors.primary),
-														),
-													),
+													label: 'Email',
 												),
 												const SizedBox(height: 10),
-												TextField(
+												_AuthInputField(
 													controller: _passwordController,
 													obscureText: _obscurePassword,
-													style: const TextStyle(fontSize: 14),
-													decoration: InputDecoration(
-														hintText: 'Mật khẩu',
-														hintStyle: const TextStyle(fontSize: 13),
-														contentPadding: const EdgeInsets.symmetric(
-															horizontal: 14,
-															vertical: 14,
-														),
-														filled: true,
-														fillColor: Colors.white,
-														suffixIcon: IconButton(
-															onPressed: () {
-																setState(() {
-																	_obscurePassword = !_obscurePassword;
-																});
-															},
-															icon: Icon(
-																_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-																size: 18,
-																color: AppColors.primary,
-															),
-														),
-														border: OutlineInputBorder(
-															borderRadius: BorderRadius.circular(13),
-															borderSide: const BorderSide(color: AppColors.primaryLight),
-														),
-														enabledBorder: OutlineInputBorder(
-															borderRadius: BorderRadius.circular(13),
-															borderSide: const BorderSide(color: AppColors.primaryLight),
-														),
-														focusedBorder: OutlineInputBorder(
-															borderRadius: BorderRadius.circular(13),
-															borderSide: const BorderSide(color: AppColors.primary),
+													label: 'Mật khẩu',
+													suffixIcon: IconButton(
+														onPressed: () {
+															setState(() {
+																_obscurePassword = !_obscurePassword;
+															});
+														},
+														icon: Icon(
+															_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+															size: 18,
+															color: AppColors.primary,
 														),
 													),
 												),
@@ -278,6 +234,52 @@ class _LoginScreenState extends State<LoginScreen> {
 							),
 						),
 					],
+				),
+			),
+		);
+	}
+}
+
+class _AuthInputField extends StatelessWidget {
+	const _AuthInputField({
+		required this.controller,
+		required this.label,
+		this.keyboardType,
+		this.obscureText = false,
+		this.suffixIcon,
+	});
+
+	final TextEditingController controller;
+	final String label;
+	final TextInputType? keyboardType;
+	final bool obscureText;
+	final Widget? suffixIcon;
+
+	@override
+	Widget build(BuildContext context) {
+		return TextField(
+			controller: controller,
+			keyboardType: keyboardType,
+			obscureText: obscureText,
+			style: const TextStyle(fontSize: 14),
+			decoration: InputDecoration(
+				labelText: label,
+				floatingLabelBehavior: FloatingLabelBehavior.auto,
+				labelStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+				contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+				filled: false,
+				suffixIcon: suffixIcon,
+				border: OutlineInputBorder(
+					borderRadius: BorderRadius.circular(13),
+					borderSide: const BorderSide(color: AppColors.primaryLight),
+				),
+				enabledBorder: OutlineInputBorder(
+					borderRadius: BorderRadius.circular(13),
+					borderSide: const BorderSide(color: AppColors.primaryLight),
+				),
+				focusedBorder: OutlineInputBorder(
+					borderRadius: BorderRadius.circular(13),
+					borderSide: const BorderSide(color: AppColors.primary),
 				),
 			),
 		);

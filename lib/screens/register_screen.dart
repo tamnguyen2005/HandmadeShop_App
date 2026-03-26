@@ -22,6 +22,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final UserService _userService = UserService(apiClient: APIClient());
   bool _isAgree = false;
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -107,46 +109,70 @@ class _RegisterScreenState extends State<RegisterScreen> {
               padding: const EdgeInsets.fromLTRB(18, 22, 18, 24),
               child: Column(
                 children: [
+                  const SizedBox(height: 120),
                   // const SizedBox(height: 36),
                   // Image.asset('assets/images/logo.png', width: 200),
                   // const SizedBox(height: 34),
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE9DEE0).withValues(alpha: 0.95),
+                      color: Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
                     child: Column(
                       children: [
                         _UnderlineInput(
-                          label: 'Họ và tên:',
-                          hintText: 'Họ tên',
+                          label: 'Họ và tên',
                           controller: _fullNameController,
                         ),
                         _UnderlineInput(
-                          label: 'Email :',
-                          hintText: 'Email',
+                          label: 'Email',
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                         ),
                         _UnderlineInput(
-                          label: 'Số điện thoại :',
-                          hintText: 'Số điện thoại',
+                          label: 'Số điện thoại',
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
                         ),
                         _UnderlineInput(
-                          label: 'Mật khẩu :',
-                          hintText: 'Mật khẩu',
+                          label: 'Mật khẩu',
                           controller: _passwordController,
-                          obscureText: true,
+                          obscureText: _obscurePassword,
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ),
                         _UnderlineInput(
-                          label: 'Nhập mật khẩu :',
-                          hintText: 'Nhập lại mật khẩu',
+                          label: 'Nhập lại mật khẩu',
                           controller: _confirmController,
-                          obscureText: true,
+                          obscureText: _obscureConfirm,
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirm = !_obscureConfirm;
+                              });
+                            },
+                            icon: Icon(
+                              _obscureConfirm
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -245,58 +271,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
 class _UnderlineInput extends StatelessWidget {
   const _UnderlineInput({
     required this.label,
-    required this.hintText,
     required this.controller,
     this.keyboardType,
     this.obscureText = false,
+    this.suffixIcon,
   });
 
   final String label;
-  final String hintText;
   final TextEditingController controller;
   final TextInputType? keyboardType;
   final bool obscureText;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryDark,
-            ),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          isDense: true,
+          labelText: label,
+          floatingLabelBehavior: FloatingLabelBehavior.auto,
+          labelStyle: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF8A7973),
           ),
-          const SizedBox(height: 4),
-          TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            obscureText: obscureText,
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: hintText,
-              hintStyle: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF9E8B86),
-              ),
-              contentPadding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-              border: const UnderlineInputBorder(
-                borderSide: BorderSide(color: AppColors.primaryLight),
-              ),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: AppColors.primaryLight),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: AppColors.primary),
-              ),
-            ),
+          contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          filled: false,
+          suffixIcon: suffixIcon,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: const BorderSide(color: AppColors.primaryLight),
           ),
-        ],
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: const BorderSide(color: AppColors.primaryLight),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: const BorderSide(color: AppColors.primary),
+          ),
+        ),
       ),
     );
   }
