@@ -78,15 +78,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _addToCart(Product product) {
     setState(() {
-      final existingItem = _cartItems.firstWhere(
-        (item) => item.product.Id == product.Id,
-        orElse: () => CartItem(product: product, quantity: 0),
+      final existingIndex = _cartItems.indexWhere(
+        (item) => item.productId == product.Id,
       );
 
-      if (existingItem.quantity > 0) {
-        existingItem.quantity++;
+      if (existingIndex >= 0) {
+        _cartItems[existingIndex].quantity++;
       } else {
-        _cartItems.add(CartItem(product: product));
+        _cartItems.add(
+          CartItem(
+            productId: product.Id,
+            productName: product.Name,
+            imageURL: product.ImageURL,
+            option: '',
+            price: product.BasePrice,
+            quantity: 1,
+          ),
+        );
       }
     });
 
@@ -323,6 +331,11 @@ class _HomeScreenState extends State<HomeScreen> {
             favoriteProducts: _favoriteProducts,
             onToggleFavorite: _toggleFavorite,
             onAddToCart: _addToCart,
+            onExplorePressed: () {
+              setState(() {
+                _currentIndex = 0;
+              });
+            },
           ),
           ProfileScreen(
             favoriteCount: _favoriteProducts.length,

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/Order/CreateOrderRequest.dart';
 import '../models/cart_item.dart';
 import '../configurations/colors.dart';
+import 'checkout_success_screen.dart';
 import 'checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -20,24 +21,58 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  late List<bool> _selectedItems;
+  List<CartItem> _cartItems = [];
+  List<bool> _selectedItems = [];
   bool _hasSelectionInteracted = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedItems = List<bool>.filled(widget.cartItems.length, true);
+    _cartItems = _cloneItems(widget.cartItems);
+    _selectedItems = List<bool>.filled(_cartItems.length, true, growable: true);
   }
 
   @override
   void didUpdateWidget(covariant CartScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_cartDataChanged(oldWidget.cartItems, widget.cartItems)) {
+      _cartItems = _cloneItems(widget.cartItems);
+    }
     _syncSelectionState();
   }
 
+  bool _cartDataChanged(List<CartItem> oldItems, List<CartItem> newItems) {
+    if (oldItems.length != newItems.length) return true;
+    for (int i = 0; i < oldItems.length; i++) {
+      final oldItem = oldItems[i];
+      final newItem = newItems[i];
+      if (oldItem.productId != newItem.productId || oldItem.quantity != newItem.quantity) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  List<CartItem> _cloneItems(List<CartItem> source) {
+    return source
+        .map((item) => CartItem(
+              productId: item.productId,
+              productName: item.productName,
+              imageURL: item.imageURL,
+              option: item.option,
+              price: item.price,
+              quantity: item.quantity,
+            ))
+        .toList();
+  }
+
+  void _notifyCartChanged() {
+    widget.onUpdateCart(_cloneItems(_cartItems));
+  }
+
   void _syncSelectionState() {
-    if (_selectedItems.length != widget.cartItems.length) {
-      final List<bool> next = List<bool>.filled(widget.cartItems.length, true);
+    if (_selectedItems.length != _cartItems.length) {
+      final List<bool> next = List<bool>.filled(_cartItems.length, true, growable: true);
       final int carryLength = _selectedItems.length < next.length
           ? _selectedItems.length
           : next.length;
@@ -48,33 +83,37 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     if (!_hasSelectionInteracted &&
-        widget.cartItems.isNotEmpty &&
+        _cartItems.isNotEmpty &&
         !_selectedItems.any((value) => value)) {
-      _selectedItems = List<bool>.filled(widget.cartItems.length, true);
+      _selectedItems = List<bool>.filled(_cartItems.length, true, growable: true);
     }
   }
 
   void _incrementQuantity(int index) {
+    if (index < 0 || index >= _cartItems.length) return;
     setState(() {
-      widget.cartItems[index].quantity++;
+      _cartItems[index].quantity++;
     });
-    widget.onUpdateCart(widget.cartItems);
+    _notifyCartChanged();
   }
 
   void _decrementQuantity(int index) {
-    if (widget.cartItems[index].quantity > 1) {
+    if (index < 0 || index >= _cartItems.length) return;
+
+    if (_cartItems[index].quantity > 1) {
       setState(() {
-        widget.cartItems[index].quantity--;
+        _cartItems[index].quantity--;
       });
-      widget.onUpdateCart(widget.cartItems);
+      _notifyCartChanged();
     } else {
-      // quantity = 1, show remove confirmation
-      _removeItem(index);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Số lượng tối thiểu là 1')),
+      );
     }
   }
 
   void _removeItem(int index) {
-    if (index < 0 || index >= widget.cartItems.length) return;
+    if (index < 0 || index >= _cartItems.length) return;
     
     showDialog(
       context: context,
@@ -89,10 +128,10 @@ class _CartScreenState extends State<CartScreen> {
           TextButton(
             onPressed: () {
               setState(() {
-                widget.cartItems.removeAt(index);
+                _cartItems.removeAt(index);
                 _selectedItems.removeAt(index);
               });
-              widget.onUpdateCart(widget.cartItems);
+              _notifyCartChanged();
               Navigator.pop(context);
             },
             child: const Text(
@@ -111,10 +150,10 @@ class _CartScreenState extends State<CartScreen> {
     final selectedIndexes = <int>[];
     final selectedCartItems = <CartItem>[];
 
-    for (int i = 0; i < widget.cartItems.length; i++) {
+    for (int i = 0; i < _cartItems.length; i++) {
       if (_selectedItems[i]) {
         selectedIndexes.add(i);
-        selectedCartItems.add(widget.cartItems[i]);
+        selectedCartItems.add(_cartItems[i]);
       }
     }
 
@@ -124,6 +163,8 @@ class _CartScreenState extends State<CartScreen> {
       );
       return;
     }
+
+    final double selectedTotalBeforeCheckout = _selectedTotalAmount;
 
     final result = await Navigator.push<CreateOrderRequest>(
       context,
@@ -136,19 +177,21 @@ class _CartScreenState extends State<CartScreen> {
 
     setState(() {
       for (final index in selectedIndexes.reversed) {
-        widget.cartItems.removeAt(index);
+        _cartItems.removeAt(index);
         _selectedItems.removeAt(index);
       }
     });
 
-    widget.onUpdateCart(widget.cartItems);
+    _notifyCartChanged();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Thanh toán thành công bằng ${result.paymentMethod}. Đơn hàng đang được xử lý.',
+    if (!mounted) return;
+    final NumberFormat currencyFormatter = NumberFormat('#,###', 'vi_VN');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutSuccessScreen(
+          paymentMethod: result.paymentMethod,
+          totalAmountLabel: '${currencyFormatter.format(selectedTotalBeforeCheckout)}đ',
         ),
-        backgroundColor: AppColors.success,
       ),
     );
   }
@@ -156,9 +199,9 @@ class _CartScreenState extends State<CartScreen> {
   double get _selectedTotalAmount {
     _syncSelectionState();
     double total = 0;
-    for (int i = 0; i < widget.cartItems.length; i++) {
+    for (int i = 0; i < _cartItems.length; i++) {
       if (_selectedItems[i]) {
-        total += widget.cartItems[i].totalPrice;
+        total += _cartItems[i].totalPrice;
       }
     }
     return total;
@@ -176,13 +219,13 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   String _buildReference(CartItem item) {
-    final refSource = item.product.Id.replaceAll('-', '').toUpperCase();
+    final refSource = item.productId.replaceAll('-', '').toUpperCase();
     final short = refSource.length >= 8 ? refSource.substring(0, 8) : refSource;
     return 'H0B7285$short';
   }
 
   String _buildColorLabel(CartItem item) {
-    final category = (item.product.CategoryName ?? '').trim();
+    final category = (item.option ?? '').trim();
     if (category.isEmpty) return 'Nau vang';
     return category;
   }
@@ -201,7 +244,7 @@ class _CartScreenState extends State<CartScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: widget.cartItems.isEmpty
+      body: _cartItems.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -242,7 +285,7 @@ class _CartScreenState extends State<CartScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Bạn có ${widget.cartItems.length} sản phẩm trong giỏ hàng',
+                          'Bạn có ${_cartItems.length} sản phẩm trong giỏ hàng',
                           style: const TextStyle(
                             color: Color(0xFF333333),
                             fontSize: 16,
@@ -252,10 +295,10 @@ class _CartScreenState extends State<CartScreen> {
                         const SizedBox(height: 12),
                         Expanded(
                           child: ListView.separated(
-                            itemCount: widget.cartItems.length,
-                            separatorBuilder: (_, __) => const Divider(height: 14),
+                            itemCount: _cartItems.length,
+                            separatorBuilder: (context, index) => const Divider(height: 14),
                             itemBuilder: (context, index) {
-                              final item = widget.cartItems[index];
+                              final item = _cartItems[index];
                               return _buildCartItemRow(item, index, currencyFormatter);
                             },
                           ),
@@ -292,8 +335,9 @@ class _CartScreenState extends State<CartScreen> {
                                     setState(() {
                                       _hasSelectionInteracted = true;
                                       _selectedItems = List<bool>.filled(
-                                        widget.cartItems.length,
+                                        _cartItems.length,
                                         value ?? false,
+                                        growable: true,
                                       );
                                     });
                                   },
@@ -402,14 +446,17 @@ class _CartScreenState extends State<CartScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 58,
-          height: 58,
-          color: const Color(0xFFE3E0DC),
-          child: item.product.ImageURL.startsWith('http')
+          width: 68,
+          height: 68,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE3E0DC),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: item.imageURL.startsWith('http')
               ? Image.network(
-                  item.product.ImageURL,
+                  item.imageURL,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (context, error, stackTrace) => const Icon(
                     Icons.shopping_bag_outlined,
                     color: AppColors.textLight,
                   ),
@@ -425,7 +472,7 @@ class _CartScreenState extends State<CartScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item.product.Name,
+                item.productName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -448,22 +495,22 @@ class _CartScreenState extends State<CartScreen> {
               Row(
                 children: [
                   InkWell(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                     onTap: () => _decrementQuantity(index),
                     child: Container(
-                      width: 28,
-                      height: 28,
+                      width: 32,
+                      height: 32,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: const Color(0xFFE9E6E3),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Icon(Icons.remove, size: 16, color: AppColors.textPrimary),
                     ),
                   ),
                   Container(
-                    width: 30,
-                    height: 28,
+                    width: 36,
+                    height: 32,
                     alignment: Alignment.center,
                     color: Colors.white,
                     child: Text(
@@ -472,15 +519,15 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
                   InkWell(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                     onTap: () => _incrementQuantity(index),
                     child: Container(
-                      width: 28,
-                      height: 28,
+                      width: 32,
+                      height: 32,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: const Color(0xFFE9E6E3),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
                     ),

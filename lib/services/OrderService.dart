@@ -5,6 +5,7 @@ import 'package:handmadeshop_app/models/Order/CreateOrderRequest.dart';
 
 class OrderService {
   APIClient apiClient;
+  String? lastError;
   OrderService({required this.apiClient});
   Future<List<OrderResponse>> GetAllOrder() async {
     var response = await apiClient.get("/Order");
@@ -28,6 +29,7 @@ class OrderService {
 
   Future<bool> CreateOrder(CreateOrderRequest request) async {
     var response = await apiClient.post("/Order", request.toJson());
+    lastError = response.error;
     return response.isSuccess;
   }
 }

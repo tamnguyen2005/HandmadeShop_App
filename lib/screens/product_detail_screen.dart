@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/Product/Product.dart';
 import '../models/Product/ProductOption.dart';
+import '../models/cart_item.dart';
 import '../configurations/colors.dart';
-import '../components/custom_button.dart';
+import 'checkout_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -27,11 +28,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   late PageController _imageController;
   int _currentImageIndex = 0;
   String? _selectedColor;
+  late bool _isFavorite;
 
   @override
   void initState() {
     super.initState();
     _imageController = PageController();
+    _isFavorite = widget.isFavorite;
   }
 
   @override
@@ -51,6 +54,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
+  Future<void> _buyNow() async {
+    final item = CartItem(
+      productId: widget.product.Id,
+      productName: widget.product.Name,
+      imageURL: widget.product.ImageURL,
+      option: _selectedColor ?? '',
+      price: widget.product.BasePrice,
+      quantity: 1,
+    );
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(items: [item]),
+      ),
+    );
+
+    if (!mounted || result == null) return;
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -58,7 +79,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final colorOption = _getColorOption();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
           // App Bar - Minimal
@@ -99,12 +120,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ],
                   ),
                   child: Icon(
-                    widget.isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: widget.isFavorite ? AppColors.favorite : AppColors.textPrimary,
+                    _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: _isFavorite ? AppColors.favorite : AppColors.textPrimary,
                     size: 24,
                   ),
                 ),
-                onPressed: widget.onFavoriteToggle,
+                onPressed: () {
+                  setState(() {
+                    _isFavorite = !_isFavorite;
+                  });
+                  widget.onFavoriteToggle();
+                },
               ),
               const SizedBox(width: 12),
             ],
@@ -118,11 +144,51 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           // Product Details Content
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 24),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE9E2DC)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                  const SizedBox(height: 2),
+
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          widget.product.CategoryName?.trim().isNotEmpty == true
+                              ? widget.product.CategoryName!
+                              : 'Handmade',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (widget.product.StockQuantity != null)
+                        Text(
+                          'Còn ${widget.product.StockQuantity} sản phẩm',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
 
                   // Product Name & Price Section
                   Text(
@@ -143,6 +209,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                     ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: const [
+                      _TrustChip(icon: Icons.local_shipping_outlined, label: 'Giao toàn quốc'),
+                      _TrustChip(icon: Icons.verified_outlined, label: 'Handmade cao cấp'),
+                      _TrustChip(icon: Icons.autorenew_outlined, label: 'Đổi trả 7 ngày'),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
@@ -217,12 +295,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   const SizedBox(height: 120),
                 ],
               ),
+              ),
             ),
           ),
         ],
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -234,13 +313,53 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ],
         ),
         child: SafeArea(
-          child: CustomButton(
-            text: 'Thêm vào giỏ hàng',
-            icon: Icons.shopping_bag_outlined,
-            onPressed: () {
-              widget.onAddToCart();
-              Navigator.pop(context);
-            },
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    widget.onAddToCart();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đã thêm vào giỏ hàng')),
+                    );
+                  },
+                  icon: const Icon(Icons.shopping_bag_outlined),
+                  label: const Text('Thêm vào giỏ'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 1.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _buyNow,
+                  icon: const Icon(Icons.bolt_rounded),
+                  label: const Text('Mua ngay'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -264,10 +383,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             },
             children: [
               _buildImageWidget(widget.product.ImageURL),
-              ...?widget.product.ProductOptions
-                  ?.expand((opt) =>
-                      opt.values.map((val) => _buildImageWidget(widget.product.ImageURL)))
-                  .toList(),
+              ...?widget.product.ProductOptions?.expand(
+                (opt) => opt.values.map(
+                  (val) => _buildImageWidget(widget.product.ImageURL),
+                ),
+              ),
             ],
           ),
         ),
@@ -563,18 +683,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
-                child: Image.asset(
-                  'assets/icons/shopping_bag.png',
-                  width: 50,
-                  height: 50,
-                  color: AppColors.textLight,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.shopping_bag_outlined,
-                      size: 50,
-                      color: AppColors.textLight.withValues(alpha: 0.5),
-                    );
-                  },
+                child: Icon(
+                  Icons.shopping_bag_outlined,
+                  size: 50,
+                  color: AppColors.textLight.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -592,11 +704,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            '${price}đ',
+            '$priceđ',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrustChip extends StatelessWidget {
+  const _TrustChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFEDE4DD)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppColors.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
             ),
           ),
         ],

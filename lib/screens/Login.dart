@@ -99,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
 							padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
 							child: Column(
 								children: [
-									const SizedBox(height: 150),
+									const SizedBox(height: 185),
 									Container(
 										width: double.infinity,
 										decoration: BoxDecoration(
@@ -113,12 +113,22 @@ class _LoginScreenState extends State<LoginScreen> {
 													controller: _emailController,
 													keyboardType: TextInputType.emailAddress,
 													label: 'Email',
+													prefixIcon: const Icon(
+														Icons.alternate_email_rounded,
+														size: 20,
+														color: AppColors.primary,
+													),
 												),
 												const SizedBox(height: 10),
 												_AuthInputField(
 													controller: _passwordController,
 													obscureText: _obscurePassword,
 													label: 'Mật khẩu',
+													prefixIcon: const Icon(
+														Icons.lock_outline_rounded,
+														size: 20,
+														color: AppColors.primary,
+													),
 													suffixIcon: IconButton(
 														onPressed: () {
 															setState(() {
@@ -246,6 +256,7 @@ class _AuthInputField extends StatelessWidget {
 		required this.label,
 		this.keyboardType,
 		this.obscureText = false,
+		this.prefixIcon,
 		this.suffixIcon,
 	});
 
@@ -253,6 +264,7 @@ class _AuthInputField extends StatelessWidget {
 	final String label;
 	final TextInputType? keyboardType;
 	final bool obscureText;
+	final Widget? prefixIcon;
 	final Widget? suffixIcon;
 
 	@override
@@ -268,6 +280,7 @@ class _AuthInputField extends StatelessWidget {
 				labelStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
 				contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
 				filled: false,
+				prefixIcon: prefixIcon,
 				suffixIcon: suffixIcon,
 				border: OutlineInputBorder(
 					borderRadius: BorderRadius.circular(13),
@@ -306,7 +319,9 @@ class _SocialButton extends StatelessWidget {
 			height: 50,
 			child: OutlinedButton.icon(
 				onPressed: onPressed,
-				icon: Icon(icon, color: iconColor, size: 24),
+				icon: label.toLowerCase().contains('google')
+						? const _GoogleBrandIcon()
+						: Icon(icon, color: iconColor, size: 21),
 				label: Text(
 					label,
 					style: const TextStyle(
@@ -319,6 +334,31 @@ class _SocialButton extends StatelessWidget {
 					backgroundColor: Colors.white,
 					side: const BorderSide(color: Color(0xFFCFC6C4)),
 					shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+				),
+			),
+		);
+	}
+}
+
+class _GoogleBrandIcon extends StatelessWidget {
+	const _GoogleBrandIcon();
+
+	@override
+	Widget build(BuildContext context) {
+		return Container(
+			width: 22,
+			height: 22,
+			decoration: BoxDecoration(
+				color: Colors.white,
+				borderRadius: BorderRadius.circular(11),
+			),
+			alignment: Alignment.center,
+			child: RichText(
+				text: const TextSpan(
+					style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+					children: [
+						TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
+					],
 				),
 			),
 		);

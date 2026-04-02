@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../models/User/UserInfo.dart';
@@ -14,6 +16,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   String _fullName = 'Chưa đăng nhập';
   String _email = '?@gmail.com';
   String _imageUrl = '';
+  String _avatarBase64 = '';
 
   @override
   void initState() {
@@ -29,10 +32,14 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       _fullName = userInfo.fullname;
       _email = userInfo.email;
       _imageUrl = userInfo.imageURL;
+      _avatarBase64 = userInfo.avatarBase64;
     });
   }
 
   ImageProvider _avatarProvider() {
+    if (_avatarBase64.trim().isNotEmpty) {
+      return MemoryImage(base64Decode(_avatarBase64));
+    }
     if (_imageUrl.trim().isNotEmpty) {
       return NetworkImage(_imageUrl);
     }
@@ -129,14 +136,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               label: 'Email',
               value: _email,
             ),
-            _buildInfoTile(
-              icon: Icons.image_outlined,
-              label: 'Ảnh đại diện',
-              value: _imageUrl.trim().isEmpty ? 'Chưa có ảnh đại diện' : _imageUrl,
-            ),
             const SizedBox(height: 6),
             const Text(
-              'Kéo xuống để làm mới thông tin.',
+              'Avatar được quản lý tại trang cá nhân.',
               style: TextStyle(
                 fontSize: 12,
                 color: Color(0xFF8C837E),
