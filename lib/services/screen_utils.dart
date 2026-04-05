@@ -18,47 +18,24 @@ class ScreenUtils {
         behavior: behavior,
         backgroundColor: backgroundColor,
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
   /// Hiển thị Error SnackBar
-  static void showErrorSnackBar(
-    BuildContext context,
-    String message,
-  ) {
-    showSnackBar(
-      context,
-      message,
-      backgroundColor: AppColors.error,
-    );
+  static void showErrorSnackBar(BuildContext context, String message) {
+    showSnackBar(context, message, backgroundColor: AppColors.error);
   }
 
   /// Hiển thị Success SnackBar
-  static void showSuccessSnackBar(
-    BuildContext context,
-    String message,
-  ) {
-    showSnackBar(
-      context,
-      message,
-      backgroundColor: AppColors.success,
-    );
+  static void showSuccessSnackBar(BuildContext context, String message) {
+    showSnackBar(context, message, backgroundColor: AppColors.success);
   }
 
   /// Hiển thị Warning SnackBar
-  static void showWarningSnackBar(
-    BuildContext context,
-    String message,
-  ) {
-    showSnackBar(
-      context,
-      message,
-      backgroundColor: AppColors.warning,
-    );
+  static void showWarningSnackBar(BuildContext context, String message) {
+    showSnackBar(context, message, backgroundColor: AppColors.warning);
   }
 
   /// Hiển thị Dialog xác nhận
@@ -71,34 +48,34 @@ class ScreenUtils {
     VoidCallback? onConfirm,
   }) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              cancelText,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context, true);
-              onConfirm?.call();
-            },
-            child: Text(
-              confirmText,
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  cancelText,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
               ),
-            ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context, true);
+                  onConfirm?.call();
+                },
+                child: Text(
+                  confirmText,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
   }
 
@@ -124,7 +101,7 @@ class ScreenUtils {
   }
 
   /// Hide Loading Dialog
-  static Future<void> hideLoadingDialog(BuildContext context) {
+  static Future<void> hideLoadingDialog(BuildContext context) async {
     return Navigator.of(context, rootNavigator: true).pop();
   }
 
@@ -139,9 +116,7 @@ class ScreenUtils {
       context: context,
       isDismissible: isDismissible,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(borderRadius),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(borderRadius)),
       ),
       builder: (context) => child,
     );
@@ -231,9 +206,7 @@ class ScreenUtils {
     BuildContext context,
     Widget Function(BuildContext) builder,
   ) {
-    return Navigator.of(context).push<T>(
-      MaterialPageRoute(builder: builder),
-    );
+    return Navigator.of(context).push<T>(MaterialPageRoute(builder: builder));
   }
 
   /// Push replacement
@@ -241,9 +214,9 @@ class ScreenUtils {
     BuildContext context,
     Widget Function(BuildContext) builder,
   ) {
-    return Navigator.of(context).pushReplacement<T, T>(
-      MaterialPageRoute(builder: builder),
-    );
+    return Navigator.of(
+      context,
+    ).pushReplacement<T, T>(MaterialPageRoute(builder: builder));
   }
 
   /// Push and remove until
@@ -251,10 +224,9 @@ class ScreenUtils {
     BuildContext context,
     Widget Function(BuildContext) builder,
   ) {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: builder),
-      (route) => false,
-    );
+    Navigator.of(
+      context,
+    ).pushAndRemoveUntil(MaterialPageRoute(builder: builder), (route) => false);
   }
 
   /// Pop screen
@@ -264,9 +236,7 @@ class ScreenUtils {
 
   /// Pop until
   static void popUntil(BuildContext context, String routeName) {
-    Navigator.of(context).popUntil(
-      ModalRoute.withName(routeName),
-    );
+    Navigator.of(context).popUntil(ModalRoute.withName(routeName));
   }
 
   /// Can pop

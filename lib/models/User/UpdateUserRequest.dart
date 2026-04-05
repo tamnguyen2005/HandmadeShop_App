@@ -3,25 +3,22 @@ import 'dart:io';
 class UpdateUserRequest {
   String? fullName;
   String? email;
-  String? password;
   String? phoneNumber;
   String? address;
-  File? avatarURL;
+  File? avartar;
   UpdateUserRequest({
     this.fullName,
     this.email,
-    this.password,
     this.address,
-    this.avatarURL,
+    this.avartar,
     this.phoneNumber,
   });
   Map<String, String> toJson() {
     return {
-      "fullName": fullName ?? "",
-      "email": email ?? "",
-      "password": password ?? "",
-      "address": address ?? "",
-      "phoneNumber": phoneNumber ?? "",
+      "fullName": fullName?.trim() ?? "",
+      "email": email?.trim().toLowerCase() ?? "",
+      "phoneNumber": phoneNumber?.trim() ?? "",
+      "address": address?.trim() ?? "",
     };
   }
 }

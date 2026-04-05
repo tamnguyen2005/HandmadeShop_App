@@ -37,9 +37,9 @@ class CartItemCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: cartItem.product.ImageURL.startsWith('http')
+                child: cartItem.imageURL.startsWith('http')
                     ? Image.network(
-                        cartItem.product.ImageURL,
+                        cartItem.imageURL,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Icon(
@@ -55,14 +55,14 @@ class CartItemCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            
+
             // Product Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    cartItem.product.Name,
+                    cartItem.productName,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -72,18 +72,18 @@ class CartItemCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    cartItem.product.CategoryName ?? 'San pham thu cong',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  // Text(
+                  //   cartItem.categoryName ?? 'San pham thu cong',
+                  //   style: const TextStyle(
+                  //     fontSize: 12,
+                  //     color: AppColors.textSecondary,
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 8),
                   Row(
                     children: [
                       Text(
-                        '${currencyFormatter.format(cartItem.product.BasePrice)}đ',
+                        '${currencyFormatter.format(cartItem.price)}đ',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -91,7 +91,7 @@ class CartItemCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      
+
                       // Quantity Controls
                       Container(
                         decoration: BoxDecoration(
@@ -110,7 +110,9 @@ class CartItemCard extends StatelessWidget {
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               child: Text(
                                 '${cartItem.quantity}',
                                 style: const TextStyle(
@@ -136,7 +138,7 @@ class CartItemCard extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Remove Button
             IconButton(
               icon: const Icon(Icons.delete_outline, color: AppColors.error),

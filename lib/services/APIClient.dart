@@ -6,7 +6,7 @@ import 'package:handmadeshop_app/models/ApiReponse.dart';
 import 'package:http/http.dart' as http;
 
 class APIClient {
-  String baseUrl = "http://192.168.50.18:5000/api";
+  String baseUrl = "http://192.168.2.18:5000/api";
   Future<Map<String, String>> _buildHeaders({
     bool requiresAuth = true,
     bool includeJsonContentType = true,
@@ -62,7 +62,10 @@ class APIClient {
     return "Server returned an error";
   }
 
-  Future<ApiResponse<dynamic>> get(String endpoint, {bool requiresAuth = true}) async {
+  Future<ApiResponse<dynamic>> get(
+    String endpoint, {
+    bool requiresAuth = true,
+  }) async {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl$endpoint"),
@@ -88,9 +91,9 @@ class APIClient {
 
   Future<ApiResponse<dynamic>> post(
     String endpoint,
-    Map<String, dynamic> body,
-    {bool requiresAuth = true}
-  ) async {
+    Map<String, dynamic> body, {
+    bool requiresAuth = true,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl$endpoint"),
@@ -117,9 +120,9 @@ class APIClient {
 
   Future<ApiResponse<dynamic>> put(
     String endpoint,
-    Map<String, dynamic> body,
-    {bool requiresAuth = true}
-  ) async {
+    Map<String, dynamic> body, {
+    bool requiresAuth = true,
+  }) async {
     try {
       final response = await http.put(
         Uri.parse("$baseUrl$endpoint"),
@@ -148,9 +151,9 @@ class APIClient {
     String endpoint,
     Map<String, String> textFile,
     File? file,
-    String fileKeyName,
-    {bool requiresAuth = true}
-  ) async {
+    String fileKeyName, {
+    bool requiresAuth = true,
+  }) async {
     var request = http.MultipartRequest('PUT', Uri.parse("$baseUrl$endpoint"));
     request.headers.addAll(
       await _buildHeaders(
@@ -191,9 +194,9 @@ class APIClient {
     String endpoint,
     Map<String, String> textFile,
     File? file,
-    String? fileKeyName,
-    {bool requiresAuth = true}
-  ) async {
+    String? fileKeyName, {
+    bool requiresAuth = true,
+  }) async {
     var request = http.MultipartRequest('POST', Uri.parse("$baseUrl$endpoint"));
     request.headers.addAll(
       await _buildHeaders(
@@ -212,6 +215,35 @@ class APIClient {
     var streamedResponse = await request.send();
     try {
       var response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
+        return ApiResponse(
+          statusCode: response.statusCode,
+          data: _decodeBody(response.body),
+        );
+      } else {
+        final data = _decodeBody(response.body);
+        return ApiResponse(
+          statusCode: response.statusCode,
+          data: data,
+          error: _extractErrorMessage(data),
+        );
+      }
+    } catch (e) {
+      return ApiResponse(statusCode: 500, error: e.toString());
+    }
+  }
+
+  Future<ApiResponse<dynamic>> delete(
+    String endpoint,
+    Map<String, dynamic> body, {
+    bool requiresAuth = true,
+  }) async {
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseUrl$endpoint"),
+        headers: await _buildHeaders(requiresAuth: requiresAuth),
+        body: jsonEncode(body),
+      );
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,

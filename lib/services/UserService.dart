@@ -2,6 +2,11 @@ import 'APIClient.dart';
 import 'package:handmadeshop_app/models/Auth/LoginRequest.dart';
 import 'package:handmadeshop_app/models/Auth/RegisterRequest.dart';
 import 'package:handmadeshop_app/models/User/UserInfo.dart';
+import 'package:handmadeshop_app/models/Auth/ForgotPasswordRequest.dart';
+import 'package:handmadeshop_app/models/Auth/ResetPasswordRequest.dart';
+import 'package:handmadeshop_app/models/Auth/ChangePasswordRequest.dart';
+import 'package:handmadeshop_app/models/User/UpdateUserRequest.dart';
+import 'package:handmadeshop_app/models/User/DeleteUserRequest.dart';
 
 class UserService {
   APIClient apiClient;
@@ -13,11 +18,14 @@ class UserService {
     if (payload is! Map<String, dynamic>) return null;
 
     // Common backend envelopes.
-    final dynamic data = payload['data'] ?? payload['result'] ?? payload['user'];
+    final dynamic data =
+        payload['data'] ?? payload['result'] ?? payload['user'];
     if (data is Map<String, dynamic>) return data;
 
     // Sometimes login fields are returned at root.
-    if (payload.containsKey('email') || payload.containsKey('fullName') || payload.containsKey('token')) {
+    if (payload.containsKey('email') ||
+        payload.containsKey('fullName') ||
+        payload.containsKey('token')) {
       return payload;
     }
     return null;
@@ -25,7 +33,8 @@ class UserService {
 
   String? _extractMessage(dynamic payload) {
     if (payload is Map<String, dynamic>) {
-      final dynamic message = payload['message'] ?? payload['error'] ?? payload['title'];
+      final dynamic message =
+          payload['message'] ?? payload['error'] ?? payload['title'];
       if (message is String && message.trim().isNotEmpty) {
         return message;
       }
@@ -54,9 +63,15 @@ class UserService {
     );
 
     if (!response.isSuccess) {
-      lastError = response.error ?? _extractMessage(response.data) ?? 'Sai tài khoản hoặc mật khẩu';
+      lastError =
+          response.error ??
+          _extractMessage(response.data) ??
+          'Sai tài khoản hoặc mật khẩu';
       return null;
     }
+
+    // Clear lastError on success
+    lastError = null;
 
     final dynamic payload = response.data;
     try {
@@ -64,10 +79,14 @@ class UserService {
       if (userMap != null) {
         return UserInfo.fromJson(userMap);
       }
-      lastError = _extractMessage(payload) ?? 'Không đọc được dữ liệu người dùng từ máy chủ';
+      lastError =
+          _extractMessage(payload) ??
+          'Không đọc được dữ liệu người dùng từ máy chủ';
       return null;
     } catch (_) {
-      lastError = _extractMessage(payload) ?? 'Dữ liệu đăng nhập không hợp lệ từ máy chủ';
+      lastError =
+          _extractMessage(payload) ??
+          'Dữ liệu đăng nhập không hợp lệ từ máy chủ';
       return null;
     }
   }
@@ -84,7 +103,90 @@ class UserService {
     );
 
     if (!response.isSuccess) {
-      lastError = response.error ?? _extractMessage(response.data) ?? 'Đăng ký thất bại';
+      lastError =
+          response.error ??
+          _extractMessage(response.data) ??
+          'Đăng ký thất bại';
+    } else {
+      // Clear lastError on success
+      lastError = null;
+    }
+    return response.isSuccess;
+  }
+
+  Future<bool> ForgotPassword(ForgotPasswordRequest request) async {
+    lastError = null;
+    final response = await apiClient.post(
+      "/User/ForgotPassword",
+      request.toJson(),
+      requiresAuth: false,
+    );
+    if (!response.isSuccess) {
+      lastError = response.error ?? _extractMessage(response.data);
+    } else {
+      lastError = null;
+    }
+    return response.isSuccess;
+  }
+
+  Future<bool> ResetPassword(ResetPasswordRequest request) async {
+    lastError = null;
+    var response = await apiClient.post(
+      "User/ResetPassword",
+      request.toJson(),
+      requiresAuth: false,
+    );
+    if (!response.isSuccess) {
+      lastError = response.error ?? _extractMessage(response.data);
+    } else {
+      lastError = null;
+    }
+    return response.isSuccess;
+  }
+
+  Future<bool> ChangePassword(ChangePasswordRequest request) async {
+    lastError = null;
+    var response = await apiClient.post(
+      "User/ChangePassword",
+      request.toJson(),
+      requiresAuth: true,
+    );
+    if (!response.isSuccess) {
+      lastError = response.error ?? _extractMessage(response.data);
+    } else {
+      lastError = null;
+    }
+    return response.isSuccess;
+  }
+
+  Future<bool> UpdateUserInfo(UpdateUserRequest request) async {
+    lastError = null;
+    var response = await apiClient.putWithFile(
+      "User",
+      request.toJson(),
+      request.avartar,
+      "avartar",
+      requiresAuth: true,
+    );
+    if (!response.isSuccess) {
+      lastError = response.error ?? _extractMessage(response.data);
+    } else {
+      lastError = null;
+    }
+    return response.isSuccess;
+  }
+
+  Future<bool> DeleteUser(DeleteUserRequest request) async {
+    lastError = null;
+    var response = await apiClient.delete(
+      "User",
+      request.toJson(),
+      requiresAuth: true,
+    );
+    if (!response.isSuccess) {
+      lastError = response.error ?? _extractMessage(response.data);
+    } else {
+      lastError = null;
     }
     return response.isSuccess;
   }
