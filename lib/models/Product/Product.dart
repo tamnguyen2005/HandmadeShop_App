@@ -10,6 +10,7 @@ class Product {
   String ImageURL;
   String? CategoryName;
   List<ProductOption>? ProductOptions;
+  List<String>? SubImages;
 
   Product({
     required this.Id,
@@ -21,6 +22,7 @@ class Product {
     this.StockQuantity,
     this.StoryBehind,
     this.ProductOptions,
+    this.SubImages,
   });
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -32,6 +34,9 @@ class Product {
       CategoryName: json["categoryName"] ?? "",
       Description: json["description"] ?? "",
       StoryBehind: json["storyBehind"] ?? "",
+      SubImages: json["subImages"] != null
+          ? List<String>.from(json["subImages"] as List)
+          : [],
       ProductOptions: json["options"] != null
           ? (json["options"] as List)
                 .map((j) => ProductOption.fromJson(j))
