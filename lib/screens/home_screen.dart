@@ -5,7 +5,11 @@ import '../components/product_card.dart';
 import '../components/banner_slider.dart';
 import '../configurations/colors.dart';
 import '../services/APIClient.dart';
+import '../services/CartService.dart';
 import '../services/ProductService.dart';
+import '../services/SharedPreferencesService.dart';
+import '../models/Cart/ShoppingCartRequest.dart';
+import '../models/Cart/CartItem.dart' as api_cart;
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 import 'favorites_screen.dart';
@@ -24,7 +28,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final ProductService _productService = ProductService(APIClient());
+  final CartService _cartService = CartService(apiClient: APIClient());
   final List<Product> _favoriteProducts = [];
+  final Set<String> _favoriteProductIds = {};
   final List<CartItem> _cartItems = [];
   List<Product> _products = [];
   bool _isLoading = true;
@@ -34,6 +40,97 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadProducts();
+    _loadCart();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final favoriteIds = await SharedPreferencesService().getFavoriteProductIds();
+    if (!mounted) return;
+
+    setState(() {
+      _favoriteProductIds
+        ..clear()
+        ..addAll(favoriteIds);
+    });
+
+    _syncFavoriteProducts();
+  }
+
+  void _syncFavoriteProducts() {
+    if (!mounted) return;
+    setState(() {
+      _favoriteProducts
+        ..clear()
+        ..addAll(
+          _products.where((product) => _favoriteProductIds.contains(product.Id)),
+        );
+    });
+  }
+
+  Future<void> _loadCart() async {
+    try {
+      final cart = await _cartService.GetShoppingCart();
+      if (!mounted || cart == null) return;
+      setState(() {
+        _cartItems
+          ..clear()
+          ..addAll(
+            cart.items.map(
+              (item) => CartItem(
+                productId: item.productId,
+                productName: item.productName,
+                imageURL: item.imageURL,
+                option: item.option,
+                price: item.price,
+                quantity: item.quantity,
+              ),
+            ),
+          );
+      });
+    } catch (_) {
+      // Keep local state if cart cannot be loaded yet.
+    }
+  }
+
+  Future<void> _syncCartToServer() async {
+    final items = _cartItems
+        .map(
+          (item) => api_cart.CartItem(
+            productId: item.productId,
+            productName: item.productName,
+            imageURL: item.imageURL,
+            option: item.option,
+            price: item.price,
+            quantity: item.quantity,
+          ),
+        )
+        .toList();
+
+    try {
+      final ok = items.isEmpty
+          ? await _cartService.DeleteShoppingCart()
+          : await _cartService.UpdateShoppingCart(
+              ShoppingCartRequest(userName: '', items: items),
+            );
+
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể lưu giỏ hàng lên máy chủ'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể kết nối máy chủ để lưu giỏ hàng'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _loadProducts() async {
@@ -48,6 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _products = products;
       });
+      _syncFavoriteProducts();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -63,17 +161,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   bool _isFavorite(Product product) {
-    return _favoriteProducts.any((item) => item.Id == product.Id);
+    return _favoriteProductIds.contains(product.Id);
   }
 
   void _toggleFavorite(Product product) {
     setState(() {
       if (_isFavorite(product)) {
-        _favoriteProducts.removeWhere((item) => item.Id == product.Id);
+        _favoriteProductIds.remove(product.Id);
       } else {
-        _favoriteProducts.add(product);
+        _favoriteProductIds.add(product.Id);
       }
     });
+
+    _syncFavoriteProducts();
+    SharedPreferencesService().setFavoriteProductIds(_favoriteProductIds.toList());
   }
 
   void _addToCart(Product product) {
@@ -98,6 +199,8 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
 
+    _syncCartToServer();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Da them "${product.Name}" vao gio hang'),
@@ -116,7 +219,26 @@ class _HomeScreenState extends State<HomeScreen> {
           product: product,
           isFavorite: _isFavorite(product),
           onFavoriteToggle: () => _toggleFavorite(product),
-          onAddToCart: () => _addToCart(product),
+          onAddToCart: _addToCart,
+        ),
+      ),
+    );
+  }
+
+  void _openCartScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CartScreen(
+          cartItems: _cartItems,
+          onUpdateCart: (updatedItems) {
+            setState(() {
+              _cartItems
+                ..clear()
+                ..addAll(updatedItems);
+            });
+            _syncCartToServer();
+          },
         ),
       ),
     );
@@ -225,6 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ..clear()
                             ..addAll(updatedItems);
                         });
+                        _syncCartToServer();
                       },
                     ),
                   ),
@@ -319,6 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onToggleFavorite: _toggleFavorite,
             onAddToCart: _addToCart,
             onProductTap: _navigateToProductDetail,
+            onCartPressed: _openCartScreen,
           ),
           StoreScreen(
             products: _products,

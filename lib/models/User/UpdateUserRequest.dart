@@ -1,16 +1,18 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 class UpdateUserRequest {
   String? fullName;
   String? email;
   String? phoneNumber;
   String? address;
-  File? avartar;
+  Uint8List? avartarBytes;
+  String? avartarFileName;
   UpdateUserRequest({
     this.fullName,
     this.email,
     this.address,
-    this.avartar,
+    this.avartarBytes,
+    this.avartarFileName,
     this.phoneNumber,
   });
   Map<String, String> toJson() {

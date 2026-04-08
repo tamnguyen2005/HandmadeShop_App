@@ -4,6 +4,7 @@ import 'package:handmadeshop_app/models/Auth/RegisterRequest.dart';
 import 'package:handmadeshop_app/models/User/UserInfo.dart';
 import 'package:handmadeshop_app/models/Auth/ForgotPasswordRequest.dart';
 import 'package:handmadeshop_app/models/Auth/ResetPasswordRequest.dart';
+import 'package:handmadeshop_app/models/Auth/VerifyResetOtpRequest.dart';
 import 'package:handmadeshop_app/models/Auth/ChangePasswordRequest.dart';
 import 'package:handmadeshop_app/models/User/UpdateUserRequest.dart';
 import 'package:handmadeshop_app/models/User/DeleteUserRequest.dart';
@@ -54,6 +55,42 @@ class UserService {
     return null;
   }
 
+  String _localizeError(String? rawError, {required String fallback}) {
+    final message = (rawError ?? '').trim();
+    if (message.isEmpty) return fallback;
+
+    final lower = message.toLowerCase();
+    if (lower.contains('email or password is not correct') ||
+        lower.contains('login failed') ||
+        lower.contains('sai tài khoản hoặc mật khẩu')) {
+      return 'Email hoặc mật khẩu không đúng';
+    }
+    if (lower.contains('user does not exist') ||
+        lower.contains('account does not exist') ||
+        lower.contains('tài khoản không tồn tại')) {
+      return 'Tài khoản không tồn tại';
+    }
+    if (lower.contains('please log in first')) {
+      return 'Vui lòng đăng nhập trước';
+    }
+    if (lower.contains('email does not exist')) {
+      return 'Email không tồn tại trong hệ thống';
+    }
+    if (lower.contains('otp ran out of time') ||
+        lower.contains('otp expired')) {
+      return 'Mã OTP đã hết hạn, vui lòng gửi lại mã mới';
+    }
+    if (lower.contains('otp does not match') ||
+        lower.contains('otp invalid')) {
+      return 'Mã OTP không đúng';
+    }
+    if (lower.contains('server returned an error')) {
+      return 'Máy chủ đang gặp lỗi, vui lòng thử lại';
+    }
+
+    return message;
+  }
+
   Future<UserInfo?> Login(LoginRequest request) async {
     lastError = null;
     var response = await apiClient.post(
@@ -63,10 +100,10 @@ class UserService {
     );
 
     if (!response.isSuccess) {
-      lastError =
-          response.error ??
-          _extractMessage(response.data) ??
-          'Sai tài khoản hoặc mật khẩu';
+      lastError = _localizeError(
+        response.error ?? _extractMessage(response.data),
+        fallback: 'Sai tài khoản hoặc mật khẩu',
+      );
       return null;
     }
 
@@ -122,7 +159,11 @@ class UserService {
       requiresAuth: false,
     );
     if (!response.isSuccess) {
-      lastError = response.error ?? _extractMessage(response.data);
+      lastError = _localizeError(
+        response.error ?? _extractMessage(response.data),
+        fallback:
+        'Không gửi được OTP. Vui lòng kiểm tra email hoặc trạng thái mail server',
+      );
     } else {
       lastError = null;
     }
@@ -132,12 +173,33 @@ class UserService {
   Future<bool> ResetPassword(ResetPasswordRequest request) async {
     lastError = null;
     var response = await apiClient.post(
-      "User/ResetPassword",
+      "/User/ResetPassword",
       request.toJson(),
       requiresAuth: false,
     );
     if (!response.isSuccess) {
-      lastError = response.error ?? _extractMessage(response.data);
+      lastError = _localizeError(
+        response.error ?? _extractMessage(response.data),
+        fallback: 'Đặt lại mật khẩu thất bại',
+      );
+    } else {
+      lastError = null;
+    }
+    return response.isSuccess;
+  }
+
+  Future<bool> VerifyResetOtp(VerifyResetOtpRequest request) async {
+    lastError = null;
+    var response = await apiClient.post(
+      "/User/VerifyResetOtp",
+      request.toJson(),
+      requiresAuth: false,
+    );
+    if (!response.isSuccess) {
+      lastError = _localizeError(
+        response.error ?? _extractMessage(response.data),
+        fallback: 'Xác thực OTP thất bại',
+      );
     } else {
       lastError = null;
     }
@@ -147,7 +209,7 @@ class UserService {
   Future<bool> ChangePassword(ChangePasswordRequest request) async {
     lastError = null;
     var response = await apiClient.post(
-      "User/ChangePassword",
+      "/User/ChangePassword",
       request.toJson(),
       requiresAuth: true,
     );
@@ -161,10 +223,11 @@ class UserService {
 
   Future<bool> UpdateUserInfo(UpdateUserRequest request) async {
     lastError = null;
-    var response = await apiClient.putWithFile(
-      "User",
+    var response = await apiClient.putWithBytes(
+      "/User",
       request.toJson(),
-      request.avartar,
+      request.avartarBytes,
+      request.avartarFileName,
       "avartar",
       requiresAuth: true,
     );
@@ -179,7 +242,7 @@ class UserService {
   Future<bool> DeleteUser(DeleteUserRequest request) async {
     lastError = null;
     var response = await apiClient.delete(
-      "User",
+      "/User",
       request.toJson(),
       requiresAuth: true,
     );

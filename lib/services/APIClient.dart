@@ -1,12 +1,13 @@
 // ignore: file_names
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'SharedPreferencesService.dart';
 import 'package:handmadeshop_app/models/ApiReponse.dart';
 import 'package:http/http.dart' as http;
 
 class APIClient {
-  String baseUrl = "http://192.168.2.18:5000/api";
+  String baseUrl = "http://192.168.50.18:5000/api";
   Future<Map<String, String>> _buildHeaders({
     bool requiresAuth = true,
     bool includeJsonContentType = true,
@@ -47,6 +48,11 @@ class APIClient {
         return message;
       }
 
+      final detail = data['detail'];
+      if (detail is String && detail.trim().isNotEmpty) {
+        return detail;
+      }
+
       final errors = data['errors'];
       if (errors is Map) {
         for (final value in errors.values) {
@@ -57,6 +63,12 @@ class APIClient {
             return value;
           }
         }
+      }
+
+      // Fallback for unknown JSON error envelopes.
+      final raw = jsonEncode(data);
+      if (raw.trim().isNotEmpty && raw != '{}') {
+        return raw;
       }
     }
     return "Server returned an error";
@@ -172,6 +184,51 @@ class APIClient {
     var streamedResponse = await request.send();
     try {
       var response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
+        return ApiResponse(
+          statusCode: response.statusCode,
+          data: _decodeBody(response.body),
+        );
+      } else {
+        final data = _decodeBody(response.body);
+        return ApiResponse(
+          statusCode: response.statusCode,
+          data: data,
+          error: _extractErrorMessage(data),
+        );
+      }
+    } catch (e) {
+      return ApiResponse(statusCode: 500, error: e.toString());
+    }
+  }
+
+  Future<ApiResponse<dynamic>> putWithBytes(
+    String endpoint,
+    Map<String, String> textFile,
+    Uint8List? bytes,
+    String? fileName,
+    String fileKeyName, {
+    bool requiresAuth = true,
+  }) async {
+    var request = http.MultipartRequest('PUT', Uri.parse("$baseUrl$endpoint"));
+    request.headers.addAll(
+      await _buildHeaders(
+        requiresAuth: requiresAuth,
+        includeJsonContentType: false,
+      ),
+    );
+    request.fields.addAll(textFile);
+    if (bytes != null && fileName != null) {
+      final multipartFile = http.MultipartFile.fromBytes(
+        fileKeyName,
+        bytes,
+        filename: fileName,
+      );
+      request.files.add(multipartFile);
+    }
+    final streamedResponse = await request.send();
+    try {
+      final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         return ApiResponse(
           statusCode: response.statusCode,

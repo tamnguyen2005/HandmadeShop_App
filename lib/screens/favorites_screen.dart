@@ -155,8 +155,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                   isFavorite: true,
                                   onFavoriteToggle: () =>
                                       widget.onToggleFavorite(product),
-                                  onAddToCart: () =>
-                                      widget.onAddToCart(product),
+                                  onAddToCart: widget.onAddToCart,
                                 ),
                               ),
                             );

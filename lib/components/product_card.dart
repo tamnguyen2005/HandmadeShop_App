@@ -38,7 +38,7 @@ class _ProductCardState extends State<ProductCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Section with Favorite Button and Badge
+            // Image Section with Favorite Button
             Expanded(
               flex: 58,
               child: Stack(
@@ -70,27 +70,6 @@ class _ProductCardState extends State<ProductCard> {
                             ),
                           ),
                   ),
-
-                  if ((widget.product.StockQuantity ?? 0) <= 1)
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppColors.uniqueBadge,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Text(
-                          'Độc bản',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
 
                   Positioned(
                     top: 10,
@@ -158,7 +137,7 @@ class _ProductCardState extends State<ProductCard> {
                     ),
                     const SizedBox(height: 6),
                     
-                    // Price and Add to Cart Button Row
+                    // Price and Add to Cart Button Row (button stays fully inside card)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -179,21 +158,21 @@ class _ProductCardState extends State<ProductCard> {
                         const SizedBox(width: 6),
                         
                         // Add to Cart Button 
-                        GestureDetector(
+                        InkWell(
                           onTap: widget.onAddToCart,
+                          borderRadius: BorderRadius.circular(7),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            width: 34,
+                            height: 30,
+                            alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: AppColors.primary,
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              'Thêm',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 17,
                             ),
                           ),
                         ),

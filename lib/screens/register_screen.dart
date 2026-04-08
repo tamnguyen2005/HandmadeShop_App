@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../configurations/colors.dart';
 import '../models/Auth/RegisterRequest.dart';
 import '../services/APIClient.dart';
+import '../services/SharedPreferencesService.dart';
 import '../services/UserService.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -73,6 +74,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (!mounted) return;
       if (ok) {
+        // Persist initial shipping info by email so profile/checkout can reuse it after login.
+        await SharedPreferencesService().setDefaultShippingInfo(
+          receiver: fullName,
+          phone: phone,
+          address: '',
+          userEmail: email,
+        );
         _showSnack('Đăng ký thành công, vui lòng đăng nhập');
         Navigator.of(context).pop();
       } else {
@@ -104,12 +112,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset('assets/images/backgroundregister.png', fit: BoxFit.cover),
+            Image.asset(
+              'assets/images/backgroundregister.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
             SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 22, 18, 24),
               child: Column(
                 children: [
-                  const SizedBox(height: 120),
+                  const SizedBox(height: 170),
                   // const SizedBox(height: 36),
                   // Image.asset('assets/images/logo.png', width: 200),
                   // const SizedBox(height: 34),

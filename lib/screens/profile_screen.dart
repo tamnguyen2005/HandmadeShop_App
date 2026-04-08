@@ -1,15 +1,22 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../configurations/colors.dart';
 import '../models/User/UserInfo.dart';
+import '../models/User/UpdateUserRequest.dart';
+import '../services/APIClient.dart';
 import '../services/SharedPreferencesService.dart';
+import '../services/UserService.dart';
 import 'Login.dart';
 import 'my_invoices_screen.dart';
 import 'my_offers_screen.dart';
 import 'order_status_screen.dart';
 import 'personal_info_screen.dart';
+import 'support_customer_care_screen.dart';
+import 'support_faq_screen.dart';
+import 'support_product_care_screen.dart';
+import 'support_terms_policy_screen.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int favoriteCount;
@@ -26,6 +33,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final UserService _userService = UserService(apiClient: APIClient());
   String _fullName = 'Chưa đăng nhập';
   String _email = '?@gmail.com';
   String _imageUrl = '';
@@ -77,13 +85,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final bytes = await selected.readAsBytes();
       final encoded = base64Encode(bytes);
       await SharedPreferencesService().setAvatarBase64(encoded);
+
+      final ok = await _userService.UpdateUserInfo(
+        UpdateUserRequest(
+          avartarBytes: bytes,
+          avartarFileName: selected.name.isNotEmpty ? selected.name : 'avatar.jpg',
+        ),
+      );
+
       if (!mounted) return;
       setState(() {
         _avatarBase64 = encoded;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã cập nhật ảnh đại diện')),
-      );
+
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã cập nhật ảnh đại diện')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_userService.lastError ?? 'Không thể lưu ảnh đại diện lên server'),
+          ),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -283,22 +308,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _ProfileMenuTile(
             icon: Icons.support_agent_outlined,
             title: 'Chăm sóc sản phẩm',
-            onTap: () => _showComingSoon(context, 'Chăm sóc sản phẩm'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SupportProductCareScreen()),
+              );
+            },
           ),
           _ProfileMenuTile(
             icon: Icons.headset_mic_outlined,
             title: 'Chăm sóc khách hàng',
-            onTap: () => _showComingSoon(context, 'Chăm sóc khách hàng'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SupportCustomerCareScreen()),
+              );
+            },
           ),
           _ProfileMenuTile(
             icon: Icons.verified_user_outlined,
             title: 'Điều khoản và chính sách',
-            onTap: () => _showComingSoon(context, 'Điều khoản và chính sách'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SupportTermsPolicyScreen()),
+              );
+            },
           ),
           _ProfileMenuTile(
             icon: Icons.help_outline,
             title: 'Câu hỏi thường gặp',
-            onTap: () => _showComingSoon(context, 'Câu hỏi thường gặp'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SupportFaqScreen()),
+              );
+            },
           ),
 
           const SizedBox(height: 16),
@@ -331,7 +372,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   )
                 : null,
-            onTap: () => _showComingSoon(context, 'Cài đặt'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
           ),
           _ProfileMenuTile(
             icon: Icons.logout,
@@ -353,11 +398,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showComingSoon(BuildContext context, String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$title đang được phát triển')),
-    );
-  }
 }
 
 class _OrderStatus extends StatelessWidget {

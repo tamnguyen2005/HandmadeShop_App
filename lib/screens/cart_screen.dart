@@ -375,7 +375,7 @@ class _CartScreenState extends State<CartScreen> {
                                       Text(
                                         '$_selectedCount',
                                         style: const TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 12,
                                           color: AppColors.textSecondary,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -396,7 +396,7 @@ class _CartScreenState extends State<CartScreen> {
                                       '${currencyFormatter.format(_selectedTotalAmount)}đ',
                                       style: const TextStyle(
                                         color: Color(0xFFA53D2B),
-                                        fontSize: 28,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -421,7 +421,7 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                               padding: const EdgeInsets.symmetric(horizontal: 22),
                               textStyle: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),

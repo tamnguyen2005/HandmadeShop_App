@@ -3,7 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../configurations/colors.dart';
+import '../models/Category/Category.dart';
+import '../models/Category/CategoryDetail.dart';
 import '../models/Product/Product.dart';
+import '../services/APIClient.dart';
+import '../services/CategoryService.dart';
+import '../services/ProductService.dart';
 
 class CollectionScreen extends StatefulWidget {
   final List<Product> products;
@@ -11,6 +16,7 @@ class CollectionScreen extends StatefulWidget {
   final Function(Product) onToggleFavorite;
   final Function(Product) onAddToCart;
   final Function(Product) onProductTap;
+  final VoidCallback onCartPressed;
 
   const CollectionScreen({
     super.key,
@@ -19,6 +25,7 @@ class CollectionScreen extends StatefulWidget {
     required this.onToggleFavorite,
     required this.onAddToCart,
     required this.onProductTap,
+    required this.onCartPressed,
   });
 
   @override
@@ -26,9 +33,20 @@ class CollectionScreen extends StatefulWidget {
 }
 
 class _CollectionScreenState extends State<CollectionScreen> {
+  final CategoryService _categoryService = CategoryService(apiClient: APIClient());
+  final ProductService _productService = ProductService(APIClient());
+
   late final DateTime _launchAt;
   late Duration _remaining;
   Timer? _timer;
+
+  // Category and Products state
+  Category? _selectedCategory;
+  CategoryDetail? _selectedCategoryDetail;
+  List<Category> _categories = [];
+  List<Product> _categoryProducts = [];
+  bool _isLoadingCategories = false;
+  bool _isLoadingProducts = false;
 
   @override
   void initState() {
@@ -44,6 +62,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
         _remaining = duration.isNegative ? Duration.zero : duration;
       });
     });
+    _loadCollections();
   }
 
   @override
@@ -70,10 +89,97 @@ class _CollectionScreenState extends State<CollectionScreen> {
     return widget.favoriteProducts.any((item) => item.Id == product.Id);
   }
 
+  Future<void> _loadCollections() async {
+    setState(() {
+      _isLoadingCategories = true;
+    });
+
+    try {
+      final collections = await _categoryService.GettAllCollection();
+      if (!mounted) return;
+      setState(() {
+        _categories = collections;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _categories = [];
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCategories = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadProductsByCategory(Category category) async {
+    setState(() {
+      _selectedCategory = category;
+      _selectedCategoryDetail = null;
+      _isLoadingProducts = true;
+      _categoryProducts = [];
+    });
+
+    try {
+      final detail = await _categoryService.GetCategoryById(category.id);
+      final products = await _loadProductsForCollection(category, detail);
+      if (!mounted) return;
+      setState(() {
+        _selectedCategoryDetail = detail;
+        _categoryProducts = products;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      // Fallback to local filtering if API fails.
+      final filtered = widget.products.where((product) {
+        final categoryName = (product.CategoryName ?? '').toLowerCase();
+        return categoryName.contains(category.name.toLowerCase());
+      }).toList();
+
+      setState(() {
+        _categoryProducts = filtered;
+      });
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isLoadingProducts = false;
+    });
+  }
+
+  Future<List<Product>> _loadProductsForCollection(
+    Category category,
+    CategoryDetail? detail,
+  ) async {
+    final categoryIds = <String>{category.id};
+    for (final subCategory in detail?.categories ?? const <Category>[]) {
+      if (subCategory.id.trim().isNotEmpty) {
+        categoryIds.add(subCategory.id);
+      }
+    }
+
+    final unique = <String, Product>{};
+    for (final id in categoryIds) {
+      final products = await _productService.GetProductByCategoryId(id);
+      for (final product in products) {
+        unique[product.Id] = product;
+      }
+    }
+
+    return unique.values.toList();
+  }
+
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
   @override
   Widget build(BuildContext context) {
+    if (_selectedCategory != null) {
+      return _buildProductsModalView();
+    }
+
     final days = _twoDigits(_remaining.inDays);
     final hours = _twoDigits(_remaining.inHours.remainder(24));
     final minutes = _twoDigits(_remaining.inMinutes.remainder(60));
@@ -99,7 +205,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
             icon: const Icon(Icons.search, color: AppColors.primary),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: widget.onCartPressed,
             icon: const Icon(Icons.shopping_bag_outlined, color: AppColors.primary),
           ),
         ],
@@ -161,7 +267,16 @@ class _CollectionScreenState extends State<CollectionScreen> {
               ),
             ),
           ),
-          if (_collectionProducts.isEmpty)
+          if (_isLoadingCategories)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              ),
+            )
+          else if (_categories.isEmpty)
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.all(24),
@@ -179,22 +294,19 @@ class _CollectionScreenState extends State<CollectionScreen> {
               sliver: SliverGrid(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  childAspectRatio: 0.83,
+                  childAspectRatio: 1.0,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final product = _collectionProducts[index];
-                    return _CollectionProductTile(
-                      product: product,
-                      isFavorite: _isFavorite(product),
-                      onTap: () => widget.onProductTap(product),
-                      onFavoriteTap: () => widget.onToggleFavorite(product),
-                      onAddToCart: () => widget.onAddToCart(product),
+                    final category = _categories[index];
+                    return _CategoryTile(
+                      category: category,
+                      onTap: () => _loadProductsByCategory(category),
                     );
                   },
-                  childCount: _collectionProducts.length,
+                  childCount: _categories.length,
                 ),
               ),
             ),
@@ -222,7 +334,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
-                  'Dang mo ban',
+                  'Đang mở bán',
                   style: TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ),
@@ -292,8 +404,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
-                  Colors.white.withValues(alpha: 0.40),
-                  Colors.white.withValues(alpha: 0.00),
+                Colors.transparent,
+                Colors.transparent,
                 ],
               ),
             ),
@@ -345,6 +457,166 @@ class _CollectionScreenState extends State<CollectionScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProductsModalView() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F2EE),
+      appBar: AppBar(
+        titleSpacing: 12,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          onPressed: () {
+            setState(() {
+              _selectedCategory = null;
+              _selectedCategoryDetail = null;
+              _categoryProducts = [];
+            });
+          },
+        ),
+        title: Text(
+          _selectedCategoryDetail?.name ?? _selectedCategory?.name ?? 'Bộ sưu tập',
+          style: const TextStyle(
+            color: AppColors.primary,
+            letterSpacing: 1.0,
+            fontWeight: FontWeight.w600,
+            fontSize: 28,
+          ),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.search, color: AppColors.primary),
+          ),
+          IconButton(
+            onPressed: widget.onCartPressed,
+            icon: const Icon(Icons.shopping_bag_outlined, color: AppColors.primary),
+          ),
+        ],
+      ),
+      body: _isLoadingProducts
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : _categoryProducts.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 72,
+                          color: AppColors.textLight,
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'Không có sản phẩm trong bộ sưu tập này',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.all(14),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.83,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: _categoryProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = _categoryProducts[index];
+                    return _CollectionProductTile(
+                      product: product,
+                      isFavorite: _isFavorite(product),
+                      onTap: () => widget.onProductTap(product),
+                      onFavoriteTap: () => widget.onToggleFavorite(product),
+                      onAddToCart: () => widget.onAddToCart(product),
+                    );
+                  },
+                ),
+    );
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
+    required this.category,
+    required this.onTap,
+  });
+
+  final Category category;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              category.imageURL.startsWith('http')
+                  ? Image.network(
+                      category.imageURL,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: AppColors.accent,
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.category_outlined,
+                          color: AppColors.textLight,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: AppColors.accent,
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.category_outlined,
+                        color: AppColors.textLight,
+                      ),
+                    ),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.6),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 12,
+                child: Text(
+                  category.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

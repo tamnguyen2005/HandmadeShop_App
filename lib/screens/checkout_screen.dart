@@ -90,7 +90,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final prefs = SharedPreferencesService();
     final UserInfo user = await prefs.getUserInfo();
-    final shipping = await prefs.getDefaultShippingInfo();
+    final shipping = await prefs.getDefaultShippingInfo(userEmail: user.email);
 
     final receiver = shipping['receiver']?.trim().isNotEmpty == true
         ? shipping['receiver']!.trim()
@@ -171,6 +171,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       receiver: receiver,
       phone: phone,
       address: address,
+      userEmail: (await SharedPreferencesService().getUserInfo()).email,
     );
 
     final request = CreateOrderRequest(

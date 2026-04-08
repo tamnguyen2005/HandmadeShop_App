@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../components/product_card.dart';
 import '../configurations/colors.dart';
+import '../models/Category/Category.dart';
 import '../models/Product/Product.dart';
+import '../services/APIClient.dart';
+import '../services/CategoryService.dart';
+import '../services/ProductService.dart';
 
 class StoreScreen extends StatefulWidget {
   final List<Product> products;
@@ -25,15 +29,117 @@ class StoreScreen extends StatefulWidget {
 }
 
 class _StoreScreenState extends State<StoreScreen> {
+  final CategoryService _categoryService = CategoryService(apiClient: APIClient());
+  final ProductService _productService = ProductService(APIClient());
+
   String _query = '';
   String _selectedCategory = 'Tất cả';
+  bool _isLoadingCategories = false;
+  bool _isLoadingProducts = false;
+  List<Category> _categories = [];
+  List<Product> _displayProducts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _displayProducts = List<Product>.from(widget.products);
+    _loadCategories();
+  }
+
+  @override
+  void didUpdateWidget(covariant StoreScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_selectedCategory == 'Tất cả') {
+      _displayProducts = List<Product>.from(widget.products);
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() {
+      _isLoadingCategories = true;
+    });
+
+    try {
+      final categories = await _categoryService.GetAllCategory();
+      if (!mounted) return;
+
+      setState(() {
+        _categories = categories;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _categories = [];
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCategories = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _selectCategory(String categoryName) async {
+    setState(() {
+      _selectedCategory = categoryName;
+    });
+
+    if (categoryName == 'Tất cả') {
+      setState(() {
+        _displayProducts = List<Product>.from(widget.products);
+      });
+      return;
+    }
+
+    final category = _categories.firstWhere(
+      (c) => c.name == categoryName,
+      orElse: () => Category(id: '', name: categoryName, imageURL: ''),
+    );
+
+    if (category.id.isEmpty) {
+      setState(() {
+        _displayProducts = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingProducts = true;
+    });
+
+    try {
+      final products = await _productService.GetProductByCategoryId(category.id);
+      if (!mounted) return;
+      setState(() {
+        _displayProducts = products;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _displayProducts = [];
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProducts = false;
+        });
+      }
+    }
+  }
 
   String _normalizeCategory(String? value) {
     final normalized = (value ?? '').trim();
     return normalized.isEmpty ? 'Khác' : normalized;
   }
 
-  List<String> get _categories {
+  List<String> get _categoryTabs {
+    final apiCategories = _categories.map((c) => c.name).where((e) => e.trim().isNotEmpty).toList();
+
+    if (apiCategories.isNotEmpty) {
+      return ['Tất cả', ...apiCategories];
+    }
+
     final dynamicCategories = widget.products
         .map((p) => _normalizeCategory(p.CategoryName))
         .toSet()
@@ -42,14 +148,11 @@ class _StoreScreenState extends State<StoreScreen> {
   }
 
   List<Product> get _filteredProducts {
-    return widget.products.where((product) {
-      final matchesCategory =
-          _selectedCategory == 'Tất cả' ||
-          _normalizeCategory(product.CategoryName) == _selectedCategory;
+    return _displayProducts.where((product) {
       final matchesQuery = product.Name.toLowerCase().contains(
         _query.toLowerCase(),
       );
-      return matchesCategory && matchesQuery;
+      return matchesQuery;
     }).toList();
   }
 
@@ -140,7 +243,7 @@ class _StoreScreenState extends State<StoreScreen> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemBuilder: (context, index) {
-                        final category = _categories[index];
+                        final category = _categoryTabs[index];
                         final isSelected = category == _selectedCategory;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 220),
@@ -152,11 +255,7 @@ class _StoreScreenState extends State<StoreScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _selectedCategory = category;
-                              });
-                            },
+                            onTap: () => _selectCategory(category),
                             borderRadius: BorderRadius.circular(18),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -173,13 +272,21 @@ class _StoreScreenState extends State<StoreScreen> {
                         );
                       },
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemCount: _categories.length,
+                      itemCount: _categoryTabs.length,
                     ),
                   ),
                 ],
               ),
             ),
           ),
+
+          if (_isLoadingCategories || _isLoadingProducts)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+            ),
 
           // Products Grid
           if (_filteredProducts.isEmpty)

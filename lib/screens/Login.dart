@@ -5,6 +5,7 @@ import '../models/Auth/LoginRequest.dart';
 import '../services/APIClient.dart';
 import '../services/SharedPreferencesService.dart';
 import '../services/UserService.dart';
+import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -21,6 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
 	final UserService _userService = UserService(apiClient: APIClient());
 	bool _obscurePassword = true;
 	bool _isLoading = false;
+	String? _statusMessage;
+	bool _statusIsError = true;
 
 	@override
 	void dispose() {
@@ -34,17 +37,18 @@ class _LoginScreenState extends State<LoginScreen> {
 		final password = _passwordController.text.trim();
 
 		if (email.isEmpty || password.isEmpty) {
-			_showSnack('Vui lòng nhập đầy đủ tài khoản và mật khẩu');
+			_setStatusMessage('Vui lòng nhập email và mật khẩu');
 			return;
 		}
 
 		if (!_isValidEmail(email)) {
-			_showSnack('Hiện tại hệ thống chỉ hỗ trợ đăng nhập bằng email hợp lệ');
+			_setStatusMessage('Email không hợp lệ');
 			return;
 		}
 
 		setState(() {
 			_isLoading = true;
+			_statusMessage = null;
 		});
 
 		try {
@@ -54,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
 			if (!mounted) return;
 
 			if (user == null) {
-				_showSnack(_userService.lastError ?? 'Đăng nhập thất bại, vui lòng kiểm tra lại thông tin');
+				_setStatusMessage(_userService.lastError ?? 'Đăng nhập thất bại');
 			} else {
 				await SharedPreferencesService().setUserInfo(user);
 				if (!mounted) return;
@@ -65,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
 			}
 		} catch (_) {
 			if (!mounted) return;
-			_showSnack('Không thể kết nối máy chủ, vui lòng thử lại');
+			_setStatusMessage('Không thể kết nối máy chủ, vui lòng thử lại sau');
 		} finally {
 			if (mounted) {
 				setState(() {
@@ -75,9 +79,17 @@ class _LoginScreenState extends State<LoginScreen> {
 		}
 	}
 
-	void _showSnack(String message) {
-		ScaffoldMessenger.of(context).showSnackBar(
-			SnackBar(content: Text(message)),
+	void _setStatusMessage(String message, {bool isError = true}) {
+		if (!mounted) return;
+		setState(() {
+			_statusMessage = message;
+			_statusIsError = isError;
+		});
+	}
+
+	void _openForgotPasswordScreen() {
+		Navigator.of(context).push(
+			MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
 		);
 	}
 
@@ -96,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
 					children: [
 						Image.asset('assets/images/backgroundlogin.png', fit: BoxFit.cover),
 						SingleChildScrollView(
-							padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
+							padding: const EdgeInsets.fromLTRB(8, 24, 8, 24),
 							child: Column(
 								children: [
 									const SizedBox(height: 185),
@@ -142,11 +154,51 @@ class _LoginScreenState extends State<LoginScreen> {
 														),
 													),
 												),
+												if (_statusMessage != null) ...[
+													const SizedBox(height: 8),
+													AnimatedSwitcher(
+														duration: const Duration(milliseconds: 180),
+														child: Container(
+															key: ValueKey<String>(_statusMessage!),
+															width: double.infinity,
+															padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+															decoration: BoxDecoration(
+																color: _statusIsError ? const Color(0xFFFCE8E6) : const Color(0xFFEAF4EA),
+																borderRadius: BorderRadius.circular(12),
+																border: Border.all(
+																	color: _statusIsError ? const Color(0xFFE08A7D) : const Color(0xFF9AC39A),
+																),
+															),
+															child: Row(
+																children: [
+																	Icon(
+																		_statusIsError ? Icons.error_outline : Icons.info_outline,
+																		size: 16,
+																		color: _statusIsError ? const Color(0xFFD05B4F) : const Color(0xFF4E8B56),
+																	),
+																	const SizedBox(width: 7),
+																	Expanded(
+																		child: Text(
+																			_statusMessage!,
+																			style: TextStyle(
+																				fontSize: 12,
+																				color: _statusIsError ? const Color(0xFF9F3D35) : const Color(0xFF35673B),
+																				fontWeight: FontWeight.w600,
+																			),
+																			maxLines: 2,
+																			overflow: TextOverflow.ellipsis,
+																		),
+																	),
+																],
+															),
+														),
+													),
+												],
 												const SizedBox(height: 6),
 												Align(
 													alignment: Alignment.centerRight,
 													child: TextButton(
-														onPressed: () => _showSnack('Chức năng quên mật khẩu đang được phát triển'),
+														onPressed: _openForgotPasswordScreen,
 														child: const Text(
 															'Quên Mật Khẩu',
 															style: TextStyle(
@@ -199,17 +251,30 @@ class _LoginScreenState extends State<LoginScreen> {
 												),
 												const SizedBox(height: 10),
 												_SocialButton(
-													icon: Icons.g_mobiledata,
+													leading: ClipRRect(
+														borderRadius: BorderRadius.circular(2),
+														child: Image.asset(
+															'assets/icons/google-logo.png',
+															width: 22,
+															height: 22,
+															fit: BoxFit.contain,
+															filterQuality: FilterQuality.high,
+															errorBuilder: (_, __, ___) => const Icon(
+																Icons.g_mobiledata,
+																size: 20,
+																color: Color(0xFF4285F4),
+															),
+														),
+													),
 													label: 'Đăng nhập bằng Google',
-													iconColor: const Color(0xFFDB4437),
-													onPressed: () => _showSnack('Google Login đang được phát triển'),
+													onPressed: () => _setStatusMessage('Google Login đang được phát triển', isError: false),
 												),
 												const SizedBox(height: 10),
 												_SocialButton(
 													icon: Icons.facebook,
 													label: 'Đăng nhập bằng FaceBook',
 													iconColor: const Color(0xFF1877F2),
-													onPressed: () => _showSnack('Facebook Login đang được phát triển'),
+													onPressed: () => _setStatusMessage('Facebook Login đang được phát triển', isError: false),
 												),
 											],
 										),
@@ -301,15 +366,19 @@ class _AuthInputField extends StatelessWidget {
 
 class _SocialButton extends StatelessWidget {
 	const _SocialButton({
-		required this.icon,
+		this.leading,
+		this.icon,
 		required this.label,
-		required this.iconColor,
+		this.iconColor,
+		this.googleLogo = false,
 		required this.onPressed,
 	});
 
-	final IconData icon;
+	final Widget? leading;
+	final IconData? icon;
 	final String label;
-	final Color iconColor;
+	final Color? iconColor;
+	final bool googleLogo;
 	final VoidCallback onPressed;
 
 	@override
@@ -319,9 +388,7 @@ class _SocialButton extends StatelessWidget {
 			height: 50,
 			child: OutlinedButton.icon(
 				onPressed: onPressed,
-				icon: label.toLowerCase().contains('google')
-						? const _GoogleBrandIcon()
-						: Icon(icon, color: iconColor, size: 21),
+				icon: leading ?? Icon(icon, color: iconColor, size: 21),
 				label: Text(
 					label,
 					style: const TextStyle(
@@ -334,31 +401,6 @@ class _SocialButton extends StatelessWidget {
 					backgroundColor: Colors.white,
 					side: const BorderSide(color: Color(0xFFCFC6C4)),
 					shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-				),
-			),
-		);
-	}
-}
-
-class _GoogleBrandIcon extends StatelessWidget {
-	const _GoogleBrandIcon();
-
-	@override
-	Widget build(BuildContext context) {
-		return Container(
-			width: 22,
-			height: 22,
-			decoration: BoxDecoration(
-				color: Colors.white,
-				borderRadius: BorderRadius.circular(11),
-			),
-			alignment: Alignment.center,
-			child: RichText(
-				text: const TextSpan(
-					style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-					children: [
-						TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
-					],
 				),
 			),
 		);

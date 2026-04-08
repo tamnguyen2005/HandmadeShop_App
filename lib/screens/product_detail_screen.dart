@@ -4,13 +4,16 @@ import '../models/Product/Product.dart';
 import '../models/Product/ProductOption.dart';
 import '../models/cart_item.dart';
 import '../configurations/colors.dart';
+import '../services/APIClient.dart';
+import '../services/ProductService.dart';
 import 'checkout_screen.dart';
+import 'checkout_success_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
   final bool isFavorite;
   final VoidCallback onFavoriteToggle;
-  final VoidCallback onAddToCart;
+  final ValueChanged<Product> onAddToCart;
 
   const ProductDetailScreen({
     super.key,
@@ -28,13 +31,68 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   late PageController _imageController;
   int _currentImageIndex = 0;
   String? _selectedColor;
+  String? _selectedSize;
   late bool _isFavorite;
+  final ProductService _productService = ProductService(APIClient());
+  Product? _detailProduct;
+  List<Product> _relatedProducts = [];
+  bool _isLoadingDetail = false;
+
+  Product get _activeProduct => _detailProduct ?? widget.product;
 
   @override
   void initState() {
     super.initState();
     _imageController = PageController();
     _isFavorite = widget.isFavorite;
+    _loadDetailAndRelated();
+  }
+
+  Future<void> _loadDetailAndRelated() async {
+    setState(() {
+      _isLoadingDetail = true;
+    });
+
+    try {
+      final detail = await _productService.GetProductDetail(widget.product.Id);
+      final allProducts = await _productService.GetAllProduct();
+      if (!mounted) return;
+
+      final current = detail ?? widget.product;
+      final related = allProducts
+          .where((p) => p.Id != current.Id)
+          .take(6)
+          .toList();
+
+      final colorOption = _getOptionByKeywords(
+        current,
+        const ['màu', 'mau', 'color'],
+      );
+      final sizeOption = _getOptionByKeywords(
+        current,
+        const ['size', 'kích', 'kich', 'cỡ', 'co'],
+      );
+
+      final defaultColor = (colorOption != null && colorOption.values.isNotEmpty)
+          ? colorOption.values.first
+          : null;
+      final defaultSize = (sizeOption != null && sizeOption.values.isNotEmpty)
+          ? sizeOption.values.first
+          : null;
+
+      setState(() {
+        _detailProduct = current;
+        _relatedProducts = related;
+        _selectedColor = _selectedColor ?? defaultColor;
+        _selectedSize = _selectedSize ?? defaultSize;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDetail = false;
+        });
+      }
+    }
   }
 
   @override
@@ -43,24 +101,53 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     super.dispose();
   }
 
-  ProductOption? _getColorOption() {
-    if (widget.product.ProductOptions == null) return null;
+  ProductOption? _getOptionByKeywords(Product product, List<String> keywords) {
+    if (product.ProductOptions == null) return null;
     try {
-      return widget.product.ProductOptions!.firstWhere(
-        (opt) => opt.name.toLowerCase().contains('màu') || opt.name.toLowerCase().contains('color'),
+      return product.ProductOptions!.firstWhere(
+        (opt) {
+          final name = opt.name.toLowerCase();
+          return keywords.any((keyword) => name.contains(keyword));
+        },
       );
     } catch (e) {
       return null;
     }
   }
 
+  ProductOption? _getColorOption() {
+    return _getOptionByKeywords(
+      _activeProduct,
+      const ['màu', 'mau', 'color'],
+    );
+  }
+
+  ProductOption? _getSizeOption() {
+    return _getOptionByKeywords(
+      _activeProduct,
+      const ['size', 'kích', 'kich', 'cỡ', 'co'],
+    );
+  }
+
+  String _buildSelectedOptionLabel() {
+    final parts = <String>[];
+    if ((_selectedColor ?? '').trim().isNotEmpty) {
+      parts.add('Màu: ${_selectedColor!.trim()}');
+    }
+    if ((_selectedSize ?? '').trim().isNotEmpty) {
+      parts.add('Size: ${_selectedSize!.trim()}');
+    }
+    return parts.join(' | ');
+  }
+
   Future<void> _buyNow() async {
+    final product = _activeProduct;
     final item = CartItem(
-      productId: widget.product.Id,
-      productName: widget.product.Name,
-      imageURL: widget.product.ImageURL,
-      option: _selectedColor ?? '',
-      price: widget.product.BasePrice,
+      productId: product.Id,
+      productName: product.Name,
+      imageURL: product.ImageURL,
+      option: _buildSelectedOptionLabel(),
+      price: product.BasePrice,
       quantity: 1,
     );
     final result = await Navigator.of(context).push(
@@ -70,13 +157,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
 
     if (!mounted || result == null) return;
+
+    final totalLabel = '${NumberFormat('#,###', 'vi_VN').format(item.totalPrice)}đ';
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => CheckoutSuccessScreen(
+          paymentMethod: result.paymentMethod,
+          totalAmountLabel: totalLabel,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final product = _activeProduct;
     final size = MediaQuery.of(context).size;
     final NumberFormat currencyFormatter = NumberFormat('#,###', 'vi_VN');
     final colorOption = _getColorOption();
+    final sizeOption = _getSizeOption();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -166,8 +265,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          widget.product.CategoryName?.trim().isNotEmpty == true
-                              ? widget.product.CategoryName!
+                          product.CategoryName?.trim().isNotEmpty == true
+                              ? product.CategoryName!
                               : 'Handmade',
                           style: const TextStyle(
                             fontSize: 12,
@@ -177,9 +276,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                       const Spacer(),
-                      if (widget.product.StockQuantity != null)
+                      if (product.StockQuantity != null)
                         Text(
-                          'Còn ${widget.product.StockQuantity} sản phẩm',
+                          'Còn ${product.StockQuantity} sản phẩm',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -192,7 +291,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                   // Product Name & Price Section
                   Text(
-                    widget.product.Name,
+                    product.Name,
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
@@ -203,7 +302,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   const SizedBox(height: 12),
 
                   Text(
-                    '${currencyFormatter.format(widget.product.BasePrice)}đ',
+                    '${currencyFormatter.format(product.BasePrice)}đ',
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -211,7 +310,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
 
                   Wrap(
                     spacing: 8,
@@ -228,16 +327,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   // Color Selection
                   if (colorOption != null)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.only(bottom: 14),
                       child: _buildColorSelector(colorOption),
                     ),
 
-                  // Brief Description - Optional
-                  if (widget.product.Description != null)
+                  if (sizeOption != null)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildSizeSelector(sizeOption),
+                    ),
+
+                  // Brief Description - Optional
+                  if (product.Description != null && product.Description!.trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
                       child: Text(
-                        widget.product.Description!,
+                        product.Description!,
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -250,7 +355,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                   // Divider
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Container(
                       height: 1,
                       color: AppColors.textLight.withValues(alpha: 0.15),
@@ -260,7 +365,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   // Expansion Sections
                   _buildExpansionSection(
                     'Chi tiết sản phẩm',
-                    widget.product.Description ?? 'Sản phẩm thủ công cao cấp, chất lượng vàng từ các nghệ nhân lành nghề.',
+                    product.Description ?? 'Sản phẩm thủ công cao cấp, chất lượng vàng từ các nghệ nhân lành nghề.',
                   ),
                   _buildExpansionSection(
                     'Bảo dưỡng',
@@ -275,24 +380,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     'Mỗi sản phẩm đi kèm bao bì cao cấp phù hợp làm quà tặng cho người thân.',
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 18),
 
                   // Story Behind
-                  if (widget.product.StoryBehind != null)
+                  if (product.StoryBehind != null && product.StoryBehind!.trim().isNotEmpty)
                     _buildStorybehind(),
 
-                  if (widget.product.StoryBehind != null)
-                    const SizedBox(height: 32),
+                  if (product.StoryBehind != null && product.StoryBehind!.trim().isNotEmpty)
+                    const SizedBox(height: 20),
 
-                  // Related Products Section - Accessories
+                  // Related products from API
                   _buildRelatedProductsSection(),
 
-                  const SizedBox(height: 36),
-
-                  // Suggested Products Section - Continue Exploring
-                  _buildSuggestedProductsSection(),
-
-                  const SizedBox(height: 120),
+                  const SizedBox(height: 92),
                 ],
               ),
               ),
@@ -318,7 +418,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    widget.onAddToCart();
+                    widget.onAddToCart(product);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Đã thêm vào giỏ hàng')),
                     );
@@ -374,7 +474,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           height: imageHeight.clamp(350.0, 500.0),
           width: double.infinity,
           color: AppColors.accent.withValues(alpha: 0.15),
-          child: PageView(
+          child: _isLoadingDetail
+              ? const Center(child: CircularProgressIndicator())
+              : PageView(
             controller: _imageController,
             onPageChanged: (index) {
               setState(() {
@@ -382,10 +484,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               });
             },
             children: [
-              _buildImageWidget(widget.product.ImageURL),
-              ...?widget.product.ProductOptions?.expand(
+              _buildImageWidget(_activeProduct.ImageURL),
+              ...?_activeProduct.ProductOptions?.expand(
                 (opt) => opt.values.map(
-                  (val) => _buildImageWidget(widget.product.ImageURL),
+                  (val) => _buildImageWidget(_activeProduct.ImageURL),
                 ),
               ),
             ],
@@ -399,7 +501,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              1 + (widget.product.ProductOptions?.length ?? 0),
+              1 + (_activeProduct.ProductOptions?.length ?? 0),
               (index) => Container(
                 width: 8,
                 height: 8,
@@ -515,18 +617,196 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Color _getColorFromString(String colorName) {
-    final colors = {
-      'xanh': const Color(0xFFB8E6D5),
-      'xanh lam': const Color(0xFFB8E6D5),
-      'đỏ': const Color(0xFFFF6B6B),
-      'nâu': const Color(0xFF8B6F47),
-      'trắng': const Color(0xFFE8E8E8),
-      'đen': const Color(0xFF2D2D2D),
+  Widget _buildSizeSelector(ProductOption sizeOption) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Kích thước',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: sizeOption.values.map((sizeValue) {
+            final isSelected = _selectedSize == sizeValue;
+            return InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () {
+                setState(() {
+                  _selectedSize = sizeValue;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textLight.withValues(alpha: 0.35),
+                    width: isSelected ? 1.6 : 1,
+                  ),
+                ),
+                child: Text(
+                  sizeValue,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Color _getColorFromString(String rawColor) {
+    final input = rawColor.trim();
+
+    // 1) Parse common hex formats from API, including text like "Nâu #8B5E3C".
+    final hexMatch = RegExp(r'(#|0x)?[0-9a-fA-F]{6,8}').firstMatch(input);
+    if (hexMatch != null) {
+      final hexRaw = hexMatch.group(0)!.toLowerCase().replaceAll('#', '').replaceAll('0x', '');
+      if (hexRaw.length == 6) {
+        final value = int.tryParse('ff$hexRaw', radix: 16);
+        if (value != null) return Color(value);
+      }
+      if (hexRaw.length == 8) {
+        final value = int.tryParse(hexRaw, radix: 16);
+        if (value != null) return Color(value);
+      }
+    }
+
+    // 2) Parse rgb(r,g,b) strings.
+    final rgbMatch = RegExp(r'rgb\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)', caseSensitive: false).firstMatch(input);
+    if (rgbMatch != null) {
+      final r = int.tryParse(rgbMatch.group(1) ?? '0') ?? 0;
+      final g = int.tryParse(rgbMatch.group(2) ?? '0') ?? 0;
+      final b = int.tryParse(rgbMatch.group(3) ?? '0') ?? 0;
+      return Color.fromARGB(
+        255,
+        r.clamp(0, 255),
+        g.clamp(0, 255),
+        b.clamp(0, 255),
+      );
+    }
+
+    // 3) Fallback by Vietnamese/English color names (with/without accents).
+    final normalized = input
+        .toLowerCase()
+        .replaceAll('đ', 'd')
+        .replaceAll('à', 'a')
+        .replaceAll('á', 'a')
+        .replaceAll('ạ', 'a')
+        .replaceAll('ả', 'a')
+        .replaceAll('ã', 'a')
+        .replaceAll('â', 'a')
+        .replaceAll('ầ', 'a')
+        .replaceAll('ấ', 'a')
+        .replaceAll('ậ', 'a')
+        .replaceAll('ẩ', 'a')
+        .replaceAll('ẫ', 'a')
+        .replaceAll('ă', 'a')
+        .replaceAll('ằ', 'a')
+        .replaceAll('ắ', 'a')
+        .replaceAll('ặ', 'a')
+        .replaceAll('ẳ', 'a')
+        .replaceAll('ẵ', 'a')
+        .replaceAll('è', 'e')
+        .replaceAll('é', 'e')
+        .replaceAll('ẹ', 'e')
+        .replaceAll('ẻ', 'e')
+        .replaceAll('ẽ', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('ề', 'e')
+        .replaceAll('ế', 'e')
+        .replaceAll('ệ', 'e')
+        .replaceAll('ể', 'e')
+        .replaceAll('ễ', 'e')
+        .replaceAll('ì', 'i')
+        .replaceAll('í', 'i')
+        .replaceAll('ị', 'i')
+        .replaceAll('ỉ', 'i')
+        .replaceAll('ĩ', 'i')
+        .replaceAll('ò', 'o')
+        .replaceAll('ó', 'o')
+        .replaceAll('ọ', 'o')
+        .replaceAll('ỏ', 'o')
+        .replaceAll('õ', 'o')
+        .replaceAll('ô', 'o')
+        .replaceAll('ồ', 'o')
+        .replaceAll('ố', 'o')
+        .replaceAll('ộ', 'o')
+        .replaceAll('ổ', 'o')
+        .replaceAll('ỗ', 'o')
+        .replaceAll('ơ', 'o')
+        .replaceAll('ờ', 'o')
+        .replaceAll('ớ', 'o')
+        .replaceAll('ợ', 'o')
+        .replaceAll('ở', 'o')
+        .replaceAll('ỡ', 'o')
+        .replaceAll('ù', 'u')
+        .replaceAll('ú', 'u')
+        .replaceAll('ụ', 'u')
+        .replaceAll('ủ', 'u')
+        .replaceAll('ũ', 'u')
+        .replaceAll('ư', 'u')
+        .replaceAll('ừ', 'u')
+        .replaceAll('ứ', 'u')
+        .replaceAll('ự', 'u')
+        .replaceAll('ử', 'u')
+        .replaceAll('ữ', 'u')
+        .replaceAll('ỳ', 'y')
+        .replaceAll('ý', 'y')
+        .replaceAll('ỵ', 'y')
+        .replaceAll('ỷ', 'y')
+        .replaceAll('ỹ', 'y');
+
+    final namedColors = <String, Color>{
+      'xanh': const Color(0xFF4A90E2),
+      'blue': const Color(0xFF4A90E2),
+      'xanh la': const Color(0xFF6ABF69),
+      'xanh lam': const Color(0xFF4A90E2),
+      'do': const Color(0xFFE74C3C),
+      'red': const Color(0xFFE74C3C),
+      'nau': const Color(0xFF8B6F47),
+      'brown': const Color(0xFF8B6F47),
+      'trang': const Color(0xFFEDEDED),
+      'white': const Color(0xFFEDEDED),
+      'den': const Color(0xFF2D2D2D),
+      'black': const Color(0xFF2D2D2D),
       'cam': const Color(0xFFFF9F43),
-      'tím': const Color(0xFFEE5A6F),
+      'orange': const Color(0xFFFF9F43),
+      'tim': const Color(0xFF9B59B6),
+      'purple': const Color(0xFF9B59B6),
+      'vang': const Color(0xFFF1C40F),
+      'yellow': const Color(0xFFF1C40F),
+      'hong': const Color(0xFFEB7CB7),
+      'pink': const Color(0xFFEB7CB7),
+      'xam': const Color(0xFFB0B0B0),
+      'gray': const Color(0xFFB0B0B0),
+      'grey': const Color(0xFFB0B0B0),
     };
-    return colors[colorName.toLowerCase()] ?? Colors.grey;
+
+    for (final entry in namedColors.entries) {
+      if (normalized.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+
+    return const Color(0xFFBDBDBD);
   }
 
   Widget _buildExpansionSection(String title, String content) {
@@ -573,6 +853,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildStorybehind() {
+    final product = _activeProduct;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -596,7 +877,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          widget.product.StoryBehind!,
+          product.StoryBehind ?? '',
           style: const TextStyle(
             fontSize: 13,
             color: AppColors.textSecondary,
@@ -608,28 +889,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildRelatedProductsSection() {
+    final NumberFormat currencyFormatter = NumberFormat('#,###', 'vi_VN');
+
+    if (_relatedProducts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Phụ kiến đi kèm',
+          'Sản phẩm liên quan',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 180,
+          height: 210,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: 2,
+            itemCount: _relatedProducts.length,
             itemBuilder: (context, index) {
+              final related = _relatedProducts[index];
               return Container(
                 width: 140,
                 margin: const EdgeInsets.only(right: 12),
-                child: _buildProductCard(index, 'Phụ kiến ${index + 1}', '150.000'),
+                child: _buildProductCard(
+                  related,
+                  '${currencyFormatter.format(related.BasePrice)}đ',
+                ),
               );
             },
           ),
@@ -638,40 +929,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildSuggestedProductsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Tiếp tục khám phá',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.72,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 16,
-          ),
-          itemCount: 4,
-          itemBuilder: (context, index) {
-            return _buildProductCard(index, 'Sản phẩm ${index + 1}', '${(index + 1) * 100}.000');
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProductCard(int index, String name, String price) {
+  Widget _buildProductCard(Product item, String priceLabel) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProductDetailScreen(
+              product: item,
+              isFavorite: false,
+              onFavoriteToggle: () {},
+              onAddToCart: widget.onAddToCart,
+            ),
+          ),
+        );
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -682,18 +953,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 color: AppColors.accent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Center(
-                child: Icon(
-                  Icons.shopping_bag_outlined,
-                  size: 50,
-                  color: AppColors.textLight.withValues(alpha: 0.5),
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _buildImageWidget(item.ImageURL),
               ),
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            name,
+            item.Name,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -704,7 +972,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            '$priceđ',
+            priceLabel,
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,

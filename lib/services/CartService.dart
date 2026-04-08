@@ -18,4 +18,9 @@ class CartService {
     var response = await apiClient.post("/Cart", request.toJson());
     return response.isSuccess;
   }
+
+  Future<bool> DeleteShoppingCart() async {
+    var response = await apiClient.delete("/Cart", {});
+    return response.isSuccess;
+  }
 }
